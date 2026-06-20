@@ -61,7 +61,7 @@ export default async function FeedbackDetailPage({
     : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <>
       <Topbar
         title={`Feedback #${fb.id}`}
         actions={
@@ -73,160 +73,85 @@ export default async function FeedbackDetailPage({
         }
       />
 
-      <Card>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 20,
-            padding: 24,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <Badge variant={severityColor(fb.severity)}>
-              severity: {fb.severity ?? 'unset'}
-            </Badge>
-            <Badge variant="default">source: {fb.source}</Badge>
-            <Badge variant={statusColor(fb.status)}>
-              status: {fb.status ?? 'new'}
-            </Badge>
-            <span
-              style={{
-                color: 'var(--text-dim)',
-                fontSize: 13,
-                fontFamily: 'JetBrains Mono, monospace',
-              }}
-            >
-              {formatDate(fb.created_at)}
-            </span>
-          </div>
+      <main className="p-6 space-y-4">
+        <Card>
+          <div className="flex flex-col gap-4 p-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={severityColor(fb.severity)}>
+                {fb.severity ?? 'unset'}
+              </Badge>
+              <Badge variant="default">{fb.source}</Badge>
+              <Badge variant={statusColor(fb.status)}>
+                {fb.status ?? 'new'}
+              </Badge>
+              <span className="ml-auto font-mono text-[13px] tabular-nums text-text-dim">
+                {formatDate(fb.created_at)}
+              </span>
+            </div>
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-              borderTop: '1px solid var(--border)',
-              paddingTop: 16,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                color: 'var(--text-dim)',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              Contact
-            </span>
-            {fb.contact ? (
-              emailContact ? (
-                <a
-                  href={`mailto:${fb.contact}`}
-                  style={{
-                    color: 'var(--accent)',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 14,
-                    textDecoration: 'none',
-                  }}
-                >
-                  {fb.contact}
-                </a>
+            <div className="flex flex-col gap-1.5 border-t border-border pt-4">
+              <span className="text-[11px] uppercase tracking-wide text-text-dim">
+                Contact
+              </span>
+              {fb.contact ? (
+                emailContact ? (
+                  <a
+                    href={`mailto:${fb.contact}`}
+                    className="font-mono text-[14px] text-accent no-underline transition-colors hover:text-accent-2"
+                  >
+                    {fb.contact}
+                  </a>
+                ) : (
+                  <span className="font-mono text-[14px] text-text-base">
+                    {fb.contact}
+                  </span>
+                )
               ) : (
-                <span
-                  style={{
-                    color: 'var(--text)',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 14,
-                  }}
-                >
-                  {fb.contact}
-                </span>
-              )
-            ) : (
-              <span style={{ color: 'var(--text-dim)' }}>None provided</span>
-            )}
+                <span className="text-[14px] text-text-dim">None provided</span>
+              )}
+            </div>
           </div>
+        </Card>
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-              borderTop: '1px solid var(--border)',
-              paddingTop: 16,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                color: 'var(--text-dim)',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
+        <Card>
+          <div className="flex flex-col gap-2.5 p-6">
+            <span className="text-[11px] uppercase tracking-wide text-text-dim">
               Message
             </span>
-            <div
-              style={{
-                background: 'var(--code-bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: 16,
-                color: 'var(--text)',
-              }}
-            >
+            <div className="rounded-lg border border-border bg-code-bg p-4 text-text-base">
               <MarkdownView source={fb.message ?? ''} />
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
-      <Card>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 10,
-            padding: 16,
-            alignItems: 'center',
-          }}
-        >
-          <form action={markTriaged}>
-            <Button variant="secondary" size="md">
-              Mark triaged
-            </Button>
-          </form>
-          <form action={markReplied}>
-            <Button variant="secondary" size="md">
-              Mark replied
-            </Button>
-          </form>
-          <form action={markClosed}>
-            <Button variant="danger" size="md">
-              Mark closed
-            </Button>
-          </form>
-
-          {mailtoHref && (
-            <a href={mailtoHref} style={{ marginLeft: 'auto' }}>
-              <Button variant="primary" size="md">
-                Reply via email
+        <Card>
+          <div className="flex flex-wrap items-center gap-2.5 p-4">
+            <form action={markTriaged}>
+              <Button variant="secondary" size="md">
+                Mark triaged
               </Button>
-            </a>
-          )}
-        </div>
-      </Card>
-    </div>
+            </form>
+            <form action={markReplied}>
+              <Button variant="secondary" size="md">
+                Mark replied
+              </Button>
+            </form>
+            <form action={markClosed}>
+              <Button variant="danger" size="md">
+                Mark closed
+              </Button>
+            </form>
+
+            {mailtoHref && (
+              <a href={mailtoHref} className="ml-auto">
+                <Button variant="primary" size="md">
+                  Reply via email
+                </Button>
+              </a>
+            )}
+          </div>
+        </Card>
+      </main>
+    </>
   );
 }

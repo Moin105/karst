@@ -6,7 +6,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/EmptyState';
-import { formatRelative } from '@/lib/format';
+import { formatRelative, statusColor } from '@/lib/format';
 
 const STATUSES: { key: PartnerStatus; label: string }[] = [
   { key: 'lead', label: 'Lead' },
@@ -16,20 +16,6 @@ const STATUSES: { key: PartnerStatus; label: string }[] = [
   { key: 'paying', label: 'Paying' },
   { key: 'lost', label: 'Lost' },
 ];
-
-function statusBadgeVariant(status: string): 'default' | 'success' | 'warning' | 'danger' {
-  switch (status) {
-    case 'paying':
-      return 'success';
-    case 'piloting':
-    case 'demo_booked':
-      return 'warning';
-    case 'lost':
-      return 'danger';
-    default:
-      return 'default';
-  }
-}
 
 export default async function PartnersPage() {
   await requireAdmin();
@@ -49,96 +35,84 @@ export default async function PartnersPage() {
   }
 
   return (
-    <div className="flex flex-col" style={{ color: 'var(--text)' }}>
-      <main className="flex-1 flex flex-col">
-        <Topbar
-          title="Design Partners"
-          actions={
-            <Link href="/partners/new">
-              <Button variant="primary">Add partner</Button>
-            </Link>
-          }
-        />
-        <div className="p-6 flex-1 overflow-hidden">
-          {partners.length === 0 ? (
-            <EmptyState
-              title="No design partners yet"
-              description="Track leads through your pipeline from first contact to paying customer."
-              action={
-                <Link href="/partners/new">
-                  <Button variant="primary">Add your first partner</Button>
-                </Link>
-              }
-            />
-          ) : (
-            <div className="overflow-x-auto pb-4">
-              <div className="flex gap-4 min-w-max">
-                {STATUSES.map(({ key, label }) => {
-                  const items = byStatus[key];
-                  return (
-                    <Card
-                      key={key}
-                      className="w-80 flex-shrink-0"
-                      style={{ background: 'var(--surface)' }}
-                    >
-                      <div
-                        className="flex items-center justify-between px-4 py-3 border-b"
-                        style={{ borderColor: 'var(--border)' }}
-                      >
-                        <h3 className="font-semibold text-sm uppercase tracking-wide">{label}</h3>
-                        <Badge variant={statusBadgeVariant(key)}>{items.length}</Badge>
-                      </div>
-                      <div className="p-3 space-y-2 max-h-[70vh] overflow-y-auto">
-                        {items.length === 0 ? (
-                          <p
-                            className="text-xs px-2 py-4 text-center"
-                            style={{ color: 'var(--text-dim)' }}
-                          >
-                            No partners
-                          </p>
-                        ) : (
-                          items.map((p) => (
-                            <Link
-                              key={p.id}
-                              href={`/partners/${p.id}`}
-                              className="block rounded-lg p-3 border transition-colors hover:border-accent"
-                              style={{
-                                background: 'var(--bg)',
-                                borderColor: 'var(--border)',
-                              }}
-                            >
-                              <div className="font-semibold text-sm">{p.name}</div>
-                              <div
-                                className="text-xs mt-0.5"
-                                style={{ color: 'var(--text-dim)' }}
-                              >
-                                {p.company}
-                              </div>
-                              <div className="flex items-center justify-between mt-2">
-                                {p.vertical ? (
-                                  <Badge variant="default">{p.vertical}</Badge>
-                                ) : (
-                                  <span />
-                                )}
-                                <span
-                                  className="text-xs"
-                                  style={{ color: 'var(--text-dim)' }}
-                                >
-                                  {formatRelative(p.last_touch ?? p.created_at)}
-                                </span>
-                              </div>
-                            </Link>
-                          ))
-                        )}
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+    <>
+      <Topbar
+        title="Design Partners"
+        actions={
+          <Link href="/partners/new">
+            <Button variant="primary" size="sm">
+              Add partner
+            </Button>
+          </Link>
+        }
+      />
+      <main className="p-6 space-y-4">
+        {partners.length === 0 ? (
+          <EmptyState
+            title="No design partners yet"
+            description="Track leads through your pipeline from first contact to paying customer."
+            action={
+              <Link href="/partners/new">
+                <Button variant="primary" size="sm">
+                  Add your first partner
+                </Button>
+              </Link>
+            }
+          />
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {STATUSES.map(({ key, label }) => {
+              const items = byStatus[key];
+              return (
+                <Card key={key} className="w-72 shrink-0 p-0 overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-border p-3">
+                    <span className="text-[11px] uppercase tracking-wide font-medium text-text-dim">
+                      {label}
+                    </span>
+                    <Badge variant={statusColor(key)}>
+                      <span className="tabular-nums">{items.length}</span>
+                    </Badge>
+                  </div>
+                  <div className="p-2 space-y-2 max-h-[70vh] overflow-y-auto">
+                    {items.length === 0 ? (
+                      <p className="text-xs px-2 py-4 text-center text-text-dim">
+                        No partners
+                      </p>
+                    ) : (
+                      items.map((p) => (
+                        <Link
+                          key={p.id}
+                          href={`/partners/${p.id}`}
+                          className="block rounded-lg border border-border bg-bg p-3 hover:border-accent transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                        >
+                          <div className="text-sm font-medium text-text-base">
+                            {p.name}
+                          </div>
+                          {p.company && (
+                            <div className="text-xs text-text-dim mt-0.5">
+                              {p.company}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between gap-2 mt-2">
+                            {p.vertical ? (
+                              <Badge variant="default">{p.vertical}</Badge>
+                            ) : (
+                              <span />
+                            )}
+                            <span className="text-xs text-text-dim tabular-nums">
+                              {formatRelative(p.last_touch ?? p.created_at)}
+                            </span>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </main>
-    </div>
+    </>
   );
 }

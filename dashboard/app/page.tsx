@@ -80,8 +80,8 @@ export default async function OverviewPage() {
     <div>
       <Topbar title="Overview" />
 
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard
             label="New signups (24h)"
             value={kpis.new_signups_24h}
@@ -108,11 +108,11 @@ export default async function OverviewPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card>
             <div className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-[var(--text)]">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
                   Recent activity
                 </h2>
-                <span className="text-xs text-[var(--text-dim)]">
+                <span className="text-xs tabular-nums text-[var(--text-dim)]">
                   top {timeline.length}
                 </span>
               </div>
@@ -121,23 +121,21 @@ export default async function OverviewPage() {
                   No activity yet.
                 </p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="-my-2 divide-y divide-[var(--border)]">
                   {timeline.map((item, i) => (
                     <li
                       key={i}
-                      className="flex items-start gap-3 text-sm"
+                      className="flex items-center gap-3 py-2 text-sm"
                     >
                       <Badge variant={badgeVariantFor(item.kind)}>
                         {item.kind}
                       </Badge>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[var(--text)] truncate">
-                          {item.summary}
-                        </p>
-                        <p className="text-xs text-[var(--text-dim)] mt-0.5">
-                          {formatRelative(item.created_at)}
-                        </p>
-                      </div>
+                      <span className="flex-1 min-w-0 truncate text-[var(--text)]">
+                        {item.summary}
+                      </span>
+                      <span className="shrink-0 text-xs tabular-nums text-[var(--text-dim)]">
+                        {formatRelative(item.created_at)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -147,7 +145,7 @@ export default async function OverviewPage() {
 
           <Card>
             <div className="p-5">
-              <h2 className="text-sm font-semibold text-[var(--text)] mb-4">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)] mb-3">
                 This week&apos;s todos
               </h2>
               {(!checklist || (checklist as any[]).length === 0) ? (
@@ -185,11 +183,11 @@ export default async function OverviewPage() {
 
           <Card>
             <div className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-[var(--text)]">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
                   Pipeline
                 </h2>
-                <span className="text-xs text-[var(--text-dim)]">
+                <span className="text-xs tabular-nums text-[var(--text-dim)]">
                   {pipelineTotal} partner{pipelineTotal === 1 ? '' : 's'}
                 </span>
               </div>
@@ -199,7 +197,7 @@ export default async function OverviewPage() {
                 </p>
               ) : (
                 <>
-                  <div className="flex w-full h-2 rounded overflow-hidden bg-[var(--border)]">
+                  <div className="flex w-full h-1.5 rounded-full overflow-hidden bg-[var(--border)]">
                     {pipelineEntries.map(([status, count]) => (
                       <div
                         key={status}
@@ -211,21 +209,23 @@ export default async function OverviewPage() {
                       />
                     ))}
                   </div>
-                  <ul className="mt-4 space-y-2">
+                  <ul className="mt-4 space-y-1">
                     {pipelineEntries.map(([status, count]) => (
                       <li
                         key={status}
-                        className="flex items-center justify-between text-sm"
+                        className="flex items-center justify-between py-1 text-sm"
                       >
                         <span className="flex items-center gap-2 text-[var(--text)]">
                           <span
-                            className={`inline-block w-2 h-2 rounded-full ${
+                            className={`inline-block w-2 h-2 rounded-sm ${
                               statusColor[status] || 'bg-[var(--text-dim)]'
                             }`}
                           />
-                          <span className="capitalize">{status}</span>
+                          <span className="capitalize">
+                            {status.replace(/_/g, ' ')}
+                          </span>
                         </span>
-                        <span className="font-mono text-[var(--text-dim)]">
+                        <span className="tabular-nums text-[var(--text-dim)]">
                           {count}
                         </span>
                       </li>
@@ -239,7 +239,7 @@ export default async function OverviewPage() {
 
         <div className="text-xs text-[var(--text-dim)] pt-2">
           avg cost/query ={' '}
-          <span className="font-mono text-[var(--text)]">
+          <span className="font-mono tabular-nums text-[var(--text)]">
             {formatCurrency(kpis.avg_cost_query)}
           </span>
         </div>

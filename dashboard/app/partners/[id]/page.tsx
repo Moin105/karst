@@ -75,177 +75,127 @@ export default async function PartnerDetailPage({
   )}?subject=${encodeURIComponent('karst follow-up')}`;
 
   return (
-    <div className="flex flex-col" style={{ color: 'var(--text)' }}>
-      <Topbar title={partner.name} />
-      <form action={updatePartnerAction} className="p-6 flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card style={{ background: 'var(--surface)' }} className="p-6">
-            <div
-              className="text-xs uppercase tracking-wide font-semibold mb-4"
-              style={{ color: 'var(--text-dim)' }}
-            >
-              Details
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label
-                  className="block text-xs mb-1 font-medium"
-                  style={{ color: 'var(--text-dim)' }}
-                >
-                  Name
-                </label>
-                <Input name="name" defaultValue={partner.name} required />
+    <>
+      <Topbar
+        title={partner.name}
+        actions={
+          <Badge variant={statusColor(partner.status || 'lead')}>
+            {partner.status || 'lead'}
+          </Badge>
+        }
+      />
+      <main className="p-6 space-y-4">
+        <form action={updatePartnerAction} className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="p-6">
+              <div className="text-[11px] uppercase tracking-wide text-text-dim mb-4">
+                Details
               </div>
-              <div>
-                <label
-                  className="block text-xs mb-1 font-medium"
-                  style={{ color: 'var(--text-dim)' }}
-                >
-                  Email
-                </label>
-                <Input
-                  name="email"
-                  type="email"
-                  defaultValue={partner.email || ''}
-                />
-                {partner.email && (
-                  <a
-                    href={`mailto:${partner.email}`}
-                    className="text-xs mt-1 inline-block"
-                    style={{ color: 'var(--accent)' }}
-                  >
-                    {partner.email}
-                  </a>
-                )}
-              </div>
-              <div>
-                <label
-                  className="block text-xs mb-1 font-medium"
-                  style={{ color: 'var(--text-dim)' }}
-                >
-                  Company
-                </label>
-                <Input name="company" defaultValue={partner.company || ''} />
-              </div>
-              <div>
-                <label
-                  className="block text-xs mb-1 font-medium"
-                  style={{ color: 'var(--text-dim)' }}
-                >
-                  Vertical
-                </label>
-                <Select
-                  name="vertical"
-                  defaultValue={partner.vertical || 'other'}
-                >
-                  {VERTICALS.map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <label
-                  className="block text-xs mb-1 font-medium"
-                  style={{ color: 'var(--text-dim)' }}
-                >
-                  Status
-                </label>
-                <div className="flex items-center gap-3">
-                  <Select
-                    name="status"
-                    defaultValue={partner.status || 'lead'}
-                    className="flex-1"
-                  >
-                    {PARTNER_STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-text-dim mb-1">Name</label>
+                  <Input name="name" defaultValue={partner.name} required />
+                </div>
+                <div>
+                  <label className="block text-xs text-text-dim mb-1">Email</label>
+                  <Input
+                    name="email"
+                    type="email"
+                    defaultValue={partner.email || ''}
+                  />
+                  {partner.email && (
+                    <a
+                      href={`mailto:${partner.email}`}
+                      className="text-xs text-accent mt-1 inline-block hover:underline"
+                    >
+                      {partner.email}
+                    </a>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs text-text-dim mb-1">Company</label>
+                  <Input name="company" defaultValue={partner.company || ''} />
+                </div>
+                <div>
+                  <label className="block text-xs text-text-dim mb-1">Vertical</label>
+                  <Select name="vertical" defaultValue={partner.vertical || 'other'}>
+                    {VERTICALS.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
                       </option>
                     ))}
                   </Select>
-                  <Badge variant={statusColor(partner.status || 'lead')}>
-                    {partner.status || 'lead'}
-                  </Badge>
                 </div>
-              </div>
-              <div>
-                <div
-                  className="text-xs font-medium"
-                  style={{ color: 'var(--text-dim)' }}
-                >
-                  Created
-                </div>
-                <div className="text-sm mt-1">
-                  {formatDate(partner.created_at)}
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card style={{ background: 'var(--surface)' }} className="p-6">
-            <div
-              className="text-xs uppercase tracking-wide font-semibold mb-4"
-              style={{ color: 'var(--text-dim)' }}
-            >
-              Notes
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label
-                  className="block text-xs mb-1 font-medium"
-                  style={{ color: 'var(--text-dim)' }}
-                >
-                  Edit (markdown)
-                </label>
-                <Textarea
-                  name="notes_md"
-                  rows={10}
-                  defaultValue={partner.notes_md || ''}
-                  className="font-mono text-sm"
-                />
-              </div>
-              <div>
-                <div
-                  className="block text-xs mb-2 font-medium"
-                  style={{ color: 'var(--text-dim)' }}
-                >
-                  Preview
-                </div>
-                <div
-                  className="rounded-lg p-4 border"
-                  style={{
-                    background: 'var(--bg)',
-                    borderColor: 'var(--border)',
-                  }}
-                >
-                  {partner.notes_md ? (
-                    <MarkdownView source={partner.notes_md} />
-                  ) : (
-                    <p
-                      className="text-sm"
-                      style={{ color: 'var(--text-dim)' }}
+                <div>
+                  <label className="block text-xs text-text-dim mb-1">Status</label>
+                  <div className="flex items-center gap-3">
+                    <Select
+                      name="status"
+                      defaultValue={partner.status || 'lead'}
+                      className="flex-1"
                     >
-                      No notes yet.
-                    </p>
-                  )}
+                      {PARTNER_STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </Select>
+                    <Badge variant={statusColor(partner.status || 'lead')}>
+                      {partner.status || 'lead'}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-text-dim mb-1">Created</div>
+                  <div className="text-sm tabular-nums">
+                    {formatDate(partner.created_at)}
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        </div>
+            </Card>
 
-        <div className="flex items-center justify-between mt-6">
-          <a href={mailto}>
-            <Button variant="secondary" type="button">
-              Send email
+            <Card className="p-6">
+              <div className="text-[11px] uppercase tracking-wide text-text-dim mb-4">
+                Notes
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-text-dim mb-1">
+                    Edit (markdown)
+                  </label>
+                  <Textarea
+                    name="notes_md"
+                    rows={10}
+                    defaultValue={partner.notes_md || ''}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <div className="block text-xs text-text-dim mb-2">Preview</div>
+                  <div className="rounded-lg border border-border bg-bg p-4">
+                    {partner.notes_md ? (
+                      <MarkdownView source={partner.notes_md} />
+                    ) : (
+                      <p className="text-sm text-text-dim">No notes yet.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <a href={mailto}>
+              <Button variant="secondary" size="sm" type="button">
+                Send email
+              </Button>
+            </a>
+            <Button variant="primary" size="sm" type="submit">
+              Save
             </Button>
-          </a>
-          <Button variant="primary" type="submit">
-            Save
-          </Button>
-        </div>
-      </form>
-    </div>
+          </div>
+        </form>
+      </main>
+    </>
   );
 }

@@ -6,17 +6,17 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variants = {
-  default: 'bg-border text-text-dim',
-  success: 'bg-accent-2/20 text-accent-2',
-  warning: 'bg-yellow-500/20 text-yellow-500',
-  danger: 'bg-red-500/20 text-red-500',
+  default: 'bg-white/5 text-text-dim',
+  success: 'bg-accent-2/15 text-accent-2',
+  warning: 'bg-amber-400/15 text-amber-300',
+  danger: 'bg-red-500/15 text-red-400',
 };
 
 export function Badge({ className, variant = 'default', ...props }: BadgeProps) {
   return (
     <span
       className={clsx(
-        'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium tracking-wide',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none',
         variants[variant],
         className
       )}

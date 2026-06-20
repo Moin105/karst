@@ -40,21 +40,8 @@ export default async function AnalyticsPage() {
   return (
     <>
       <Topbar title="Analytics" />
-      <div
-        style={{
-          padding: 24,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-        }}
-      >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 16,
-          }}
-        >
+      <div className="p-6 flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard
             label="Avg cost / query"
             value={formatUsd(avgCost ?? 0)}
@@ -74,37 +61,20 @@ export default async function AnalyticsPage() {
         </div>
 
         <Card>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+          <div className="px-5 py-4 border-b border-[var(--border)]">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
               Queries per day
             </div>
-            <div
-              style={{
-                fontSize: 20,
-                color: 'var(--text)',
-                fontWeight: 600,
-                marginTop: 2,
-              }}
-            >
-              {totalQueries30d.toLocaleString()}
-              <span
-                style={{
-                  color: 'var(--text-dim)',
-                  fontWeight: 400,
-                  fontSize: 13,
-                  marginLeft: 6,
-                }}
-              >
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-[26px] font-bold leading-none tabular-nums text-[var(--text)]">
+                {totalQueries30d.toLocaleString()}
+              </span>
+              <span className="text-[13px] text-[var(--text-dim)]">
                 last 30d
               </span>
             </div>
           </div>
-          <div style={{ padding: 16 }}>
+          <div className="p-4">
             {hasData ? (
               <QueriesChart data={queries} />
             ) : (
@@ -117,37 +87,20 @@ export default async function AnalyticsPage() {
         </Card>
 
         <Card>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+          <div className="px-5 py-4 border-b border-[var(--border)]">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
               Average cost per query
             </div>
-            <div
-              style={{
-                fontSize: 20,
-                color: 'var(--text)',
-                fontWeight: 600,
-                marginTop: 2,
-              }}
-            >
-              {formatUsd(avgCost ?? 0)}
-              <span
-                style={{
-                  color: 'var(--text-dim)',
-                  fontWeight: 400,
-                  fontSize: 13,
-                  marginLeft: 6,
-                }}
-              >
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-[26px] font-bold leading-none tabular-nums text-[var(--text)]">
+                {formatUsd(avgCost ?? 0)}
+              </span>
+              <span className="text-[13px] text-[var(--text-dim)]">
                 all-time avg
               </span>
             </div>
           </div>
-          <div style={{ padding: 16 }}>
+          <div className="p-4">
             {costSeries.length > 0 ? (
               <CostChart data={costSeries} />
             ) : (

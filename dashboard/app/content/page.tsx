@@ -25,12 +25,7 @@ export default async function ContentPage() {
       render: (r: BlogPost) => (
         <Link
           href={`/content/${r.id}`}
-          style={{
-            color: 'var(--text)',
-            fontWeight: 500,
-            textDecoration: 'none',
-            fontFamily: 'Inter, sans-serif',
-          }}
+          className="font-medium text-text-base hover:text-accent transition-colors"
         >
           {r.title || '(untitled)'}
         </Link>
@@ -42,12 +37,7 @@ export default async function ContentPage() {
       render: (r: BlogPost) => (
         <Link
           href={`/content/${r.id}`}
-          style={{
-            color: 'var(--text-dim)',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: 13,
-            textDecoration: 'none',
-          }}
+          className="font-mono text-[13px] text-text-dim hover:text-accent transition-colors"
         >
           /{r.slug}
         </Link>
@@ -63,8 +53,9 @@ export default async function ContentPage() {
     {
       key: 'published',
       header: 'Published',
+      align: 'right' as const,
       render: (r: BlogPost) => (
-        <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+        <span className="text-[13px] text-text-dim tabular-nums">
           {formatRelative(r.published_at)}
         </span>
       ),
@@ -76,66 +67,40 @@ export default async function ContentPage() {
       <Topbar
         title="Content"
         actions={
-          <Link href="/content/new" style={{ textDecoration: 'none' }}>
+          <Link href="/content/new">
             <Button variant="primary" size="sm">
               New post
             </Button>
           </Link>
         }
       />
-      <div
-        style={{
-          padding: 24,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-        }}
-      >
-        <Card>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}
-          >
+      <main className="p-6 space-y-4">
+        <Card className="p-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-border p-3">
             <div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: 'var(--text-dim)',
-                }}
-              >
+              <div className="text-[11px] uppercase tracking-wide text-text-dim">
                 Blog posts
               </div>
-              <div
-                style={{
-                  fontSize: 16,
-                  color: 'var(--text)',
-                  fontWeight: 600,
-                  marginTop: 2,
-                }}
-              >
+              <div className="text-sm font-medium text-text-base mt-0.5 tabular-nums">
                 {rows.length} total
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Badge variant="success">{publishedCount} published</Badge>
-              <Badge variant="warning">{draftCount} draft</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="success">
+                <span className="tabular-nums">{publishedCount}</span> published
+              </Badge>
+              <Badge variant="warning">
+                <span className="tabular-nums">{draftCount}</span> draft
+              </Badge>
             </div>
           </div>
-          <div style={{ padding: 0 }}>
-            <DataTable
-              rows={rows}
-              columns={columns}
-              emptyMessage="No posts yet. Click 'New post' to draft your first one."
-            />
-          </div>
+          <DataTable
+            rows={rows}
+            columns={columns}
+            emptyMessage="No posts yet. Click 'New post' to draft your first one."
+          />
         </Card>
-      </div>
+      </main>
     </>
   );
 }

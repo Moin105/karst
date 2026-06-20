@@ -71,64 +71,28 @@ export default async function NewContentPage({
       <Topbar
         title="New post"
         actions={
-          <Link href="/content" style={{ textDecoration: 'none' }}>
+          <Link href="/content">
             <Button variant="ghost" size="sm">
               Cancel
             </Button>
           </Link>
         }
       />
-      <div
-        style={{
-          padding: 24,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-          maxWidth: 960,
-        }}
-      >
-        <Card>
-          <form
-            action={createPostAction}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 20,
-              padding: 24,
-            }}
-          >
+      <main className="p-6 space-y-4">
+        <Card className="max-w-3xl p-6">
+          <form action={createPostAction} className="space-y-4">
             {error && (
-              <div
-                style={{
-                  background: 'rgba(239,68,68,0.1)',
-                  border: '1px solid rgba(239,68,68,0.4)',
-                  borderRadius: 8,
-                  padding: 12,
-                  color: '#fca5a5',
-                  fontSize: 13,
-                }}
-              >
+              <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-[13px] text-red-300">
                 {error === 'title-required'
                   ? 'Title is required.'
                   : 'Could not create post.'}
               </div>
             )}
 
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
+            <div>
               <label
                 htmlFor="title"
-                style={{
-                  fontSize: 12,
-                  color: 'var(--text-dim)',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                }}
+                className="block text-xs text-text-dim mb-1"
               >
                 Title
               </label>
@@ -139,58 +103,30 @@ export default async function NewContentPage({
                 required
                 autoFocus
               />
-              <span
-                style={{
-                  fontSize: 12,
-                  color: 'var(--text-dim)',
-                }}
-              >
+              <span className="text-xs text-text-dim mt-1 inline-block">
                 Slug will be generated automatically from the title.
               </span>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
+            <div>
               <label
                 htmlFor="body_md"
-                style={{
-                  fontSize: 12,
-                  color: 'var(--text-dim)',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                }}
+                className="block text-xs text-text-dim mb-1"
               >
                 Body (markdown)
               </label>
               <Textarea
                 id="body_md"
                 name="body_md"
-                className="h-80"
+                className="h-80 font-mono text-sm"
                 placeholder={`# Heading\n\nWrite the post body in markdown. Numbers over adjectives — e.g. "343s → 2.3s incremental reindex".`}
               />
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-                maxWidth: 240,
-              }}
-            >
+            <div className="max-w-[240px]">
               <label
                 htmlFor="status"
-                style={{
-                  fontSize: 12,
-                  color: 'var(--text-dim)',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                }}
+                className="block text-xs text-text-dim mb-1"
               >
                 Status
               </label>
@@ -200,26 +136,19 @@ export default async function NewContentPage({
               </Select>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 10,
-                paddingTop: 8,
-                borderTop: '1px solid var(--border)',
-              }}
-            >
-              <Button variant="primary" size="md" type="submit">
+            <div className="flex items-center gap-3 pt-2 border-t border-border">
+              <Button variant="primary" size="sm" type="submit">
                 Create post
               </Button>
-              <Link href="/content" style={{ textDecoration: 'none' }}>
-                <Button variant="ghost" size="md" type="button">
+              <Link href="/content">
+                <Button variant="ghost" size="sm" type="button">
                   Cancel
                 </Button>
               </Link>
             </div>
           </form>
         </Card>
-      </div>
+      </main>
     </>
   );
 }

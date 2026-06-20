@@ -16,12 +16,18 @@ const SCRYPT_OPTS = { N: SCRYPT_N, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 export function hashPassword(plain: string): string {
   const salt = randomBytes(16);
   const hash = scryptSync(plain, salt, SCRYPT_KEYLEN, SCRYPT_OPTS);
-  return `scrypt$N=${SCRYPT_N}$${salt.toString('hex')}$${hash.toString('hex')}`;
+  // Format: scrypt:N=<N>:<saltHex>:<hashHex>
+  // ':' avoids '$' so dotenv parsers don't try to expand variable references
+  // in .env files where this string is stored.
+  return `scrypt:N=${SCRYPT_N}:${salt.toString('hex')}:${hash.toString('hex')}`;
 }
 
 export function verifyPassword(plain: string, encoded: string): boolean {
   if (!encoded) return false;
-  const parts = encoded.split('$');
+  // Back-compat: accept legacy '$'-delimited hashes too. Split on whichever
+  // delimiter the string actually uses.
+  const delim = encoded.includes(':') && !encoded.startsWith('scrypt$') ? ':' : '$';
+  const parts = encoded.split(delim);
   if (parts.length !== 4 || parts[0] !== 'scrypt') return false;
   const nMatch = parts[1].match(/^N=(\d+)$/);
   if (!nMatch) return false;

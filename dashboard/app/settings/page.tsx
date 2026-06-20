@@ -85,6 +85,11 @@ const FLAG_KEYS: { key: string; defaultValue: string; description: string }[] = 
   },
 ];
 
+const SECTION_LABEL = 'text-[11px] uppercase tracking-wide text-text-dim';
+const SECTION_TITLE = 'text-sm font-semibold text-text-base mt-0.5';
+const CODE_BLOCK =
+  'bg-code-bg rounded-lg border border-border p-4 text-[13px] font-mono leading-relaxed overflow-x-auto m-0 whitespace-pre';
+
 export default async function SettingsPage() {
   await requireAdmin();
 
@@ -108,45 +113,13 @@ export default async function SettingsPage() {
   return (
     <>
       <Topbar title="Settings" />
-      <div
-        style={{
-          padding: 24,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-        }}
-      >
+      <main className="p-6 space-y-4">
         {/* Account */}
-        <Card>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
+        <Card className="p-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-border p-3">
             <div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: 'var(--text-dim)',
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                Account
-              </div>
-              <div
-                style={{
-                  fontSize: 16,
-                  color: 'var(--text)',
-                  fontWeight: 600,
-                  marginTop: 2,
-                }}
-              >
-                Signed in
-              </div>
+              <div className={SECTION_LABEL}>Account</div>
+              <div className={SECTION_TITLE}>Signed in</div>
             </div>
             <form action="/api/auth/logout" method="POST">
               <Button variant="secondary" size="sm" type="submit">
@@ -154,122 +127,40 @@ export default async function SettingsPage() {
               </Button>
             </form>
           </div>
-          <div
-            style={{
-              padding: 20,
-              display: 'grid',
-              gridTemplateColumns: 'max-content 1fr',
-              rowGap: 12,
-              columnGap: 24,
-              alignItems: 'center',
-            }}
-          >
-            <span
-              style={{
-                color: 'var(--text-dim)',
-                fontSize: 13,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
+          <div className="grid grid-cols-[max-content_1fr] items-center gap-x-6 gap-y-3 p-4">
+            <span className="text-[11px] uppercase tracking-wide text-text-dim">
               Admin email
             </span>
-            <span
-              style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: 13,
-                color: 'var(--text)',
-              }}
-            >
+            <span className="font-mono text-[13px] text-text-base">
               {adminEmail}
             </span>
 
-            <span
-              style={{
-                color: 'var(--text-dim)',
-                fontSize: 13,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
+            <span className="text-[11px] uppercase tracking-wide text-text-dim">
               Session started
             </span>
-            <span
-              style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: 13,
-                color: 'var(--text)',
-              }}
-            >
+            <span className="font-mono text-[13px] text-text-base tabular-nums">
               {formatDate(sessionMeta.createdAt ?? undefined)}
             </span>
 
-            <span
-              style={{
-                color: 'var(--text-dim)',
-                fontSize: 13,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
+            <span className="text-[11px] uppercase tracking-wide text-text-dim">
               Cookie
             </span>
-            <span
-              style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: 13,
-                color: 'var(--text-dim)',
-              }}
-            >
+            <span className="font-mono text-[13px] text-text-dim">
               karst_session (iron-session, 30d max-age)
             </span>
           </div>
         </Card>
 
         {/* Endpoints */}
-        <Card>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--text-dim)',
-              }}
-            >
-              Endpoints
-            </div>
-            <div
-              style={{
-                fontSize: 16,
-                color: 'var(--text)',
-                fontWeight: 600,
-                marginTop: 2,
-              }}
-            >
-              Ingest URLs
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--text-dim)',
-                marginTop: 6,
-              }}
-            >
+        <Card className="p-0 overflow-hidden">
+          <div className="border-b border-border p-3">
+            <div className={SECTION_LABEL}>Endpoints</div>
+            <div className={SECTION_TITLE}>Ingest URLs</div>
+            <div className="text-[13px] text-text-dim mt-1">
               Point the karst CLI / MCP server at these to phone home.
             </div>
           </div>
-          <div
-            style={{
-              padding: 20,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 16,
-            }}
-          >
+          <div className="flex flex-col gap-3 p-4">
             {[
               { label: 'Signups', url: ingestSignups },
               { label: 'Installs', url: ingestInstalls },
@@ -278,58 +169,19 @@ export default async function SettingsPage() {
             ].map((row) => (
               <div
                 key={row.label}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  borderBottom: '1px dashed var(--border)',
-                  paddingBottom: 10,
-                }}
+                className="flex items-center gap-3 border-b border-dashed border-border pb-2.5"
               >
                 <Badge variant="default">{row.label}</Badge>
-                <code
-                  style={{
-                    flex: 1,
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: 13,
-                    color: 'var(--accent-2)',
-                    background: 'var(--code-bg)',
-                    border: '1px solid var(--border)',
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    overflowX: 'auto',
-                  }}
-                >
+                <code className="flex-1 bg-code-bg rounded-md border border-border px-2.5 py-1.5 font-mono text-[13px] text-accent-2 overflow-x-auto">
                   {row.url}
                 </code>
               </div>
             ))}
 
-            <div
-              style={{
-                marginTop: 8,
-                fontSize: 12,
-                color: 'var(--text-dim)',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
+            <div className="mt-2 text-[11px] uppercase tracking-wide text-text-dim">
               CLI configuration
             </div>
-            <pre
-              style={{
-                background: 'var(--code-bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: 16,
-                color: 'var(--text)',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: 13,
-                lineHeight: 1.6,
-                overflowX: 'auto',
-                margin: 0,
-              }}
-            >
+            <pre className={CODE_BLOCK}>
 {`# Point the karst CLI at this instance
 export KARST_INGEST_URL="${baseUrl}"
 
@@ -345,155 +197,75 @@ karst doctor --check ingest`}
         </Card>
 
         {/* Feature flags */}
-        <Card>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--text-dim)',
-              }}
-            >
-              Feature flags
-            </div>
-            <div
-              style={{
-                fontSize: 16,
-                color: 'var(--text)',
-                fontWeight: 600,
-                marginTop: 2,
-              }}
-            >
-              Environment configuration
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--text-dim)',
-                marginTop: 6,
-              }}
-            >
+        <Card className="p-0 overflow-hidden">
+          <div className="border-b border-border p-3">
+            <div className={SECTION_LABEL}>Feature flags</div>
+            <div className={SECTION_TITLE}>Environment configuration</div>
+            <div className="text-[13px] text-text-dim mt-1">
               Values are read from the process environment at boot. Restart the
               app after changing.
             </div>
           </div>
-          <div style={{ padding: 0 }}>
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Key</TH>
-                  <TH>Value</TH>
-                  <TH>Source</TH>
-                  <TH>Description</TH>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Key</TH>
+                <TH>Value</TH>
+                <TH>Source</TH>
+                <TH>Description</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {flagRows.map((f) => (
+                <TR key={f.key}>
+                  <TD>
+                    <span className="font-mono text-[13px] text-text-base">
+                      {f.key}
+                    </span>
+                  </TD>
+                  <TD>
+                    <span
+                      className={`font-mono text-[13px] ${
+                        f.set ? 'text-accent-2' : 'text-text-dim'
+                      }`}
+                    >
+                      {f.value}
+                    </span>
+                  </TD>
+                  <TD>
+                    {f.set ? (
+                      <Badge variant="success">env</Badge>
+                    ) : (
+                      <Badge variant="default">default</Badge>
+                    )}
+                  </TD>
+                  <TD>
+                    <span className="text-[13px] text-text-dim">
+                      {f.description}
+                    </span>
+                  </TD>
                 </TR>
-              </THead>
-              <TBody>
-                {flagRows.map((f) => (
-                  <TR key={f.key}>
-                    <TD>
-                      <span
-                        style={{
-                          fontFamily: 'JetBrains Mono, monospace',
-                          fontSize: 13,
-                          color: 'var(--text)',
-                        }}
-                      >
-                        {f.key}
-                      </span>
-                    </TD>
-                    <TD>
-                      <span
-                        style={{
-                          fontFamily: 'JetBrains Mono, monospace',
-                          fontSize: 13,
-                          color: f.set ? 'var(--accent-2)' : 'var(--text-dim)',
-                        }}
-                      >
-                        {f.value}
-                      </span>
-                    </TD>
-                    <TD>
-                      {f.set ? (
-                        <Badge variant="success">env</Badge>
-                      ) : (
-                        <Badge variant="default">default</Badge>
-                      )}
-                    </TD>
-                    <TD>
-                      <span
-                        style={{
-                          color: 'var(--text-dim)',
-                          fontSize: 13,
-                        }}
-                      >
-                        {f.description}
-                      </span>
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
-          </div>
+              ))}
+            </TBody>
+          </Table>
         </Card>
 
         {/* Danger zone */}
-        <Card style={{ borderColor: 'rgba(239,68,68,0.4)' }}>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                color: '#f87171',
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
+        <Card className="p-0 overflow-hidden" style={{ borderColor: 'rgba(239,68,68,0.4)' }}>
+          <div className="border-b border-border p-3">
+            <div className="text-[11px] uppercase tracking-wide text-red-400">
               Danger zone
             </div>
-            <div
-              style={{
-                fontSize: 16,
-                color: 'var(--text)',
-                fontWeight: 600,
-                marginTop: 2,
-              }}
-            >
-              Rotate session secret
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--text-dim)',
-                marginTop: 6,
-              }}
-            >
-              Rotating <code style={{ color: 'var(--accent-2)' }}>KARST_SESSION_SECRET</code>{' '}
+            <div className={SECTION_TITLE}>Rotate session secret</div>
+            <div className="text-[13px] text-text-dim mt-1">
+              Rotating{' '}
+              <code className="text-accent-2">KARST_SESSION_SECRET</code>{' '}
               invalidates every existing admin cookie. There is no in-app button
               for this on purpose — do it from a shell with envs you control.
             </div>
           </div>
-          <div style={{ padding: 20 }}>
-            <pre
-              style={{
-                background: 'var(--code-bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: 16,
-                color: 'var(--text)',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: 13,
-                lineHeight: 1.6,
-                overflowX: 'auto',
-                margin: 0,
-              }}
-            >
+          <div className="p-4">
+            <pre className={CODE_BLOCK}>
 {`# 1. Generate a fresh 32-byte secret
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
@@ -505,7 +277,7 @@ pm2 restart karst-dashboard`}
             </pre>
           </div>
         </Card>
-      </div>
+      </main>
     </>
   );
 }

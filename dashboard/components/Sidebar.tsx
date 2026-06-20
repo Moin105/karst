@@ -40,15 +40,15 @@ function isActive(currentPath: string, href: string): boolean {
 
 export function Sidebar({ currentPath }: SidebarProps) {
   return (
-    <aside className="w-64 bg-surface border-r border-border h-screen sticky top-0 flex flex-col">
-      <div className="px-5 py-5 flex items-center gap-2.5 border-b border-border">
-        <Logo size={28} />
-        <span className="text-text-base font-semibold tracking-tight text-lg">
+    <aside className="w-60 bg-surface border-r border-border h-screen sticky top-0 flex flex-col">
+      <div className="px-4 py-4 flex items-center gap-2.5">
+        <Logo size={26} />
+        <span className="text-text-base font-semibold tracking-tight text-[15px]">
           karst
         </span>
       </div>
 
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
+      <nav className="flex-1 px-3 py-2 flex flex-col gap-0.5">
         {navItems.map((item) => {
           const active = isActive(currentPath, item.href);
           const Icon = item.icon;
@@ -57,12 +57,15 @@ export function Sidebar({ currentPath }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={clsx(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                'relative h-9 px-3 rounded-lg flex items-center gap-3 text-[13px] transition-colors',
                 active
-                  ? 'bg-bg text-accent border-l-2 border-accent'
-                  : 'text-text-dim hover:text-text-base hover:bg-bg/40'
+                  ? 'text-text-base bg-white/5'
+                  : 'text-text-dim hover:text-text-base hover:bg-white/5'
               )}
             >
+              {active && (
+                <span className="absolute left-0 inset-y-1 w-0.5 bg-accent rounded-full" />
+              )}
               <Icon className="w-4 h-4 shrink-0" />
               <span>{item.label}</span>
             </Link>
@@ -70,8 +73,8 @@ export function Sidebar({ currentPath }: SidebarProps) {
         })}
       </nav>
 
-      <div className="px-5 py-4 border-t border-border">
-        <span className="text-text-dim text-xs font-mono">v0.1.0</span>
+      <div className="mt-auto px-4 py-3 border-t border-border">
+        <span className="text-[11px] text-text-dim tabular">v0.1.0</span>
       </div>
     </aside>
   );

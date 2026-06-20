@@ -7,6 +7,7 @@ export interface Column<T> {
   header: string;
   render?: (row: T) => ReactNode;
   width?: string;
+  align?: 'left' | 'right';
 }
 
 export interface DataTableProps<T> {
@@ -18,38 +19,62 @@ export interface DataTableProps<T> {
 export function DataTable<T extends Record<string, any>>({
   rows,
   columns,
-  emptyMessage = 'No records yet.',
+  emptyMessage,
 }: DataTableProps<T>) {
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        title="Nothing here"
-        description={emptyMessage}
-      />
-    );
-  }
-
   return (
     <Table>
       <THead>
-        <TR>
+        <TR className="hover:bg-transparent">
           {columns.map((col) => (
-            <TH key={col.key} style={col.width ? { width: col.width } : undefined}>
+            <TH
+              key={col.key}
+              data-align={col.align}
+              style={col.width ? { width: col.width } : undefined}
+            >
               {col.header}
             </TH>
           ))}
         </TR>
       </THead>
       <TBody>
-        {rows.map((row, i) => (
-          <TR key={(row as any).id ?? i}>
-            {columns.map((col) => (
-              <TD key={col.key}>
-                {col.render ? col.render(row) : (row as any)[col.key]}
-              </TD>
-            ))}
-          </TR>
-        ))}
+        {rows.length === 0 ? (
+          <tr>
+            <td colSpan={columns.length}>
+              <EmptyState title={emptyMessage || 'Nothing here yet'} />
+            </td>
+          </tr>
+        ) : (
+          rows.map((row, i) => (
+            <TR key={(row as any).id ?? i}>
+              {columns.map((col) => {
+                if (col.render) {
+                  return (
+                    <TD
+                      key={col.key}
+                      data-align={col.align}
+                      style={col.width ? { width: col.width } : undefined}
+                    >
+                      <div className="min-w-0">{col.render(row)}</div>
+                    </TD>
+                  );
+                }
+                const raw = (row as any)[col.key];
+                const text = raw == null ? '' : String(raw);
+                return (
+                  <TD
+                    key={col.key}
+                    data-align={col.align}
+                    style={col.width ? { width: col.width } : undefined}
+                  >
+                    <div className="max-w-full truncate" title={text}>
+                      {text}
+                    </div>
+                  </TD>
+                );
+              })}
+            </TR>
+          ))
+        )}
       </TBody>
     </Table>
   );

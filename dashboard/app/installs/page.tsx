@@ -28,13 +28,11 @@ export default async function InstallsPage() {
     {
       key: 'anonymous_id',
       header: 'Anon ID',
+      width: '140px',
       render: (r: Install) => (
         <span
-          style={{
-            fontFamily: 'var(--font-mono, "JetBrains Mono"), monospace',
-            color: 'var(--text-dim)',
-            fontSize: 12,
-          }}
+          className="block truncate font-mono text-[12px] text-text-dim"
+          title={(r as any).anonymous_id ?? undefined}
         >
           {truncate((r as any).anonymous_id, 10)}
         </span>
@@ -43,13 +41,9 @@ export default async function InstallsPage() {
     {
       key: 'version',
       header: 'Version',
+      width: '100px',
       render: (r: Install) => (
-        <span
-          style={{
-            fontFamily: 'var(--font-mono, "JetBrains Mono"), monospace',
-            fontSize: 12,
-          }}
-        >
+        <span className="font-mono text-[12px] text-text-base tabular-nums">
           {(r as any).version ?? '—'}
         </span>
       ),
@@ -57,19 +51,17 @@ export default async function InstallsPage() {
     {
       key: 'os',
       header: 'OS',
-      render: (r: Install) => <span>{(r as any).os ?? '—'}</span>,
+      width: '120px',
+      render: (r: Install) => (
+        <span className="text-[13px] text-text-base">{(r as any).os ?? '—'}</span>
+      ),
     },
     {
       key: 'python_version',
       header: 'Python',
+      width: '100px',
       render: (r: Install) => (
-        <span
-          style={{
-            fontFamily: 'var(--font-mono, "JetBrains Mono"), monospace',
-            color: 'var(--text-dim)',
-            fontSize: 12,
-          }}
-        >
+        <span className="font-mono text-[12px] text-text-dim tabular-nums">
           {(r as any).python_version ?? '—'}
         </span>
       ),
@@ -77,15 +69,18 @@ export default async function InstallsPage() {
     {
       key: 'country',
       header: 'Country',
+      width: '100px',
       render: (r: Install) => (
-        <span style={{ color: 'var(--text-dim)' }}>{(r as any).country ?? '—'}</span>
+        <span className="text-[13px] text-text-dim">{(r as any).country ?? '—'}</span>
       ),
     },
     {
       key: 'created_at',
       header: 'Installed',
+      width: '140px',
+      align: 'right' as const,
       render: (r: Install) => (
-        <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+        <span className="text-[12px] text-text-dim tabular-nums">
           {formatRelative(r.created_at)}
         </span>
       ),
@@ -95,57 +90,20 @@ export default async function InstallsPage() {
   return (
     <>
       <Topbar title="Installs" />
-      <div
-        style={{
-          padding: 24,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-        }}
-      >
-        <Card>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: 'var(--text-dim)',
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                Installs per day
-              </div>
-              <div
-                style={{
-                  fontSize: 20,
-                  color: 'var(--text)',
-                  fontWeight: 600,
-                  marginTop: 2,
-                }}
-              >
+      <main className="p-6 space-y-4">
+        <Card className="p-0">
+          <div className="flex items-center justify-between border-b border-border p-4">
+            <div className="text-[11px] uppercase tracking-wide text-text-dim">
+              Installs per day
+            </div>
+            <div className="text-[13px] text-text-dim">
+              <span className="text-2xl font-bold text-text-base tabular-nums">
                 {totalInRange.toLocaleString()}
-                <span
-                  style={{
-                    color: 'var(--text-dim)',
-                    fontWeight: 400,
-                    fontSize: 13,
-                    marginLeft: 6,
-                  }}
-                >
-                  last 30d
-                </span>
-              </div>
+              </span>
+              <span className="ml-2">last 30d</span>
             </div>
           </div>
-          <div style={{ padding: 16 }}>
+          <div className="p-4">
             {series.length === 0 ? (
               <EmptyState
                 title="No installs yet"
@@ -157,41 +115,22 @@ export default async function InstallsPage() {
           </div>
         </Card>
 
-        <Card>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--text-dim)',
-              }}
-            >
+        <Card className="p-0">
+          <div className="flex items-center justify-between border-b border-border p-4">
+            <div className="text-[11px] uppercase tracking-wide text-text-dim">
               Recent installs
             </div>
-            <div
-              style={{
-                fontSize: 16,
-                color: 'var(--text)',
-                fontWeight: 600,
-                marginTop: 2,
-              }}
-            >
+            <span className="text-[13px] text-text-dim tabular-nums">
               Last {recent.length}
-            </div>
+            </span>
           </div>
-          <div style={{ padding: 0 }}>
-            <DataTable
-              rows={recent}
-              columns={columns}
-              emptyMessage="No installs recorded yet."
-            />
-          </div>
+          <DataTable
+            rows={recent}
+            columns={columns}
+            emptyMessage="No installs recorded yet."
+          />
         </Card>
-      </div>
+      </main>
     </>
   );
 }

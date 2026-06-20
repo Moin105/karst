@@ -47,14 +47,13 @@ export default async function SignupsPage({
       key: 'email',
       header: 'Email',
       render: (r: Signup) => (
-        <span style={{ color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
-          {r.email}
-        </span>
+        <span className="font-mono text-[13px] text-text-base">{r.email}</span>
       ),
     },
     {
       key: 'source',
       header: 'Source',
+      width: '160px',
       render: (r: Signup) => (
         <Badge variant={sourceVariant(r.source)}>{r.source ?? 'direct'}</Badge>
       ),
@@ -62,8 +61,10 @@ export default async function SignupsPage({
     {
       key: 'created',
       header: 'Created',
+      width: '160px',
+      align: 'right' as const,
       render: (r: Signup) => (
-        <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+        <span className="text-[13px] text-text-dim tabular-nums">
           {formatRelative(r.created_at)}
         </span>
       ),
@@ -71,8 +72,10 @@ export default async function SignupsPage({
     {
       key: 'actions',
       header: 'Actions',
+      width: '200px',
+      align: 'right' as const,
       render: (r: Signup) => (
-        <form action={promoteAction}>
+        <form action={promoteAction} className="flex justify-end">
           <input type="hidden" name="id" value={(r as any).id} />
           <Button variant="secondary" size="sm">
             Promote to partner
@@ -83,48 +86,40 @@ export default async function SignupsPage({
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <>
       <Topbar
         title="Signups"
         actions={
-          <a href="/signups/export.csv" style={{ textDecoration: 'none' }}>
+          <a href="/signups/export.csv" className="no-underline">
             <Button variant="secondary" size="sm">
               Export CSV
             </Button>
           </a>
         }
       />
-      <main style={{ padding: 24, flex: 1 }}>
-        <Card>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
-                padding: 16,
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
-              <form method="GET" action="/signups" style={{ flex: 1, maxWidth: 360 }}>
-                <Input
-                  name="q"
-                  defaultValue={q}
-                  placeholder="Search by email, source, notes..."
-                  className="w-full"
-                />
-              </form>
-              <Badge variant="default">Total: {rows.length}</Badge>
-            </div>
-          <div style={{ padding: 0 }}>
-            <DataTable
-              rows={rows}
-              columns={columns}
-              emptyMessage={q ? `No signups match "${q}"` : 'No signups yet'}
-            />
+      <main className="p-6 space-y-4">
+        <Card className="p-0">
+          <div className="flex items-center justify-between gap-4 border-b border-border p-4">
+            <form method="GET" action="/signups" className="flex-1 max-w-[360px]">
+              <Input
+                name="q"
+                defaultValue={q}
+                placeholder="Search by email, source, notes..."
+                className="w-full"
+              />
+            </form>
+            <span className="text-[11px] uppercase tracking-wide text-text-dim">
+              Total{' '}
+              <span className="text-text-base tabular-nums">{rows.length}</span>
+            </span>
           </div>
+          <DataTable
+            rows={rows}
+            columns={columns}
+            emptyMessage={q ? `No signups match "${q}"` : 'No signups yet'}
+          />
         </Card>
       </main>
-    </div>
+    </>
   );
 }

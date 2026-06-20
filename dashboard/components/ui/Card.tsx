@@ -11,7 +11,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
     <div
       ref={ref}
       className={clsx(
-        'bg-surface rounded-xl border border-border p-6',
+        'bg-surface rounded-xl border border-border p-5',
         className
       )}
       {...props}

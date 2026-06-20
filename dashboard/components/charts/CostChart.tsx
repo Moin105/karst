@@ -34,24 +34,24 @@ export default function CostChart({ data }: CostChartProps) {
   const formatted = data.map((d) => ({ ...d, label: formatDate(d.date) }));
 
   return (
-    <div style={{ width: '100%', height: 280 }}>
+    <div style={{ width: '100%', height: 240 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={formatted}
-          margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+          margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
         >
           <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="label"
             stroke="#94a3b8"
-            tick={{ fill: '#94a3b8', fontSize: 12, fontFamily: 'Inter, sans-serif' }}
+            tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'Inter, sans-serif' }}
             tickLine={false}
             axisLine={{ stroke: '#1f2937' }}
             minTickGap={24}
           />
           <YAxis
             stroke="#94a3b8"
-            tick={{ fill: '#94a3b8', fontSize: 12, fontFamily: 'Inter, sans-serif' }}
+            tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'Inter, sans-serif' }}
             tickLine={false}
             axisLine={{ stroke: '#1f2937' }}
             width={56}
