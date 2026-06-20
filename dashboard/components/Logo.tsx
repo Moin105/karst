@@ -2,10 +2,13 @@ export interface LogoProps {
   size?: number;
 }
 
+const ANGLES = [0, 72, 144, 216, 288];
+const LIMB =
+  "M17.5,19.5 L18.6,9.8 Q19,4.8 20,4.2 Q21,4.8 21.4,9.8 L22.5,19.5 Z";
+
 /**
- * karst mark — a pentapod ("Rocky", the Eridian rock-being from Project Hail
- * Mary): five legs radiating from a faceted carapace. Doubles as a code
- * dependency graph (nodes + edges). White on dark, purple carapace.
+ * karst mark — Rocky, the five-legged Eridian rock-being from Project Hail
+ * Mary: a domed carapace on five tapering hands. White outlines, purple rock.
  */
 export function Logo({ size = 28 }: LogoProps) {
   return (
@@ -17,33 +20,16 @@ export function Logo({ size = 28 }: LogoProps) {
       fill="none"
       aria-label="karst logo"
     >
-      {/* legs */}
-      <line x1="20" y1="13.6" x2="20" y2="4.5" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="26.09" y1="18.02" x2="34.74" y2="15.21" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="23.76" y1="25.18" x2="29.11" y2="32.54" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="16.24" y1="25.18" x2="10.89" y2="32.54" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="13.91" y1="18.02" x2="5.26" y2="15.21" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" />
-
-      {/* feet */}
-      <circle cx="20" cy="4.5" r="2.1" fill="#ffffff" />
-      <circle cx="34.74" cy="15.21" r="2.1" fill="#ffffff" />
-      <circle cx="29.11" cy="32.54" r="2.1" fill="#ffffff" />
-      <circle cx="10.89" cy="32.54" r="2.1" fill="#ffffff" />
-      <circle cx="5.26" cy="15.21" r="2.1" fill="#ffffff" />
-
-      {/* carapace */}
-      <polygon
-        points="20,13.6 26.09,18.02 23.76,25.18 16.24,25.18 13.91,18.02"
-        fill="#818cf8"
-        stroke="#ffffff"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      {/* faceted core */}
-      <polygon
-        points="20,16.8 23.04,19.01 21.88,22.59 18.12,22.59 16.96,19.01"
-        fill="#6366f1"
-      />
+      {ANGLES.map((a) => (
+        <g key={a} transform={`rotate(${a} 20 20)`}>
+          <path d={LIMB} fill="#818cf8" stroke="#ffffff" strokeWidth={1} strokeLinejoin="round" />
+          <line x1="20" y1="4.6" x2="18.8" y2="2.6" stroke="#ffffff" strokeWidth={1} strokeLinecap="round" />
+          <line x1="20" y1="4.6" x2="21.2" y2="2.6" stroke="#ffffff" strokeWidth={1} strokeLinecap="round" />
+        </g>
+      ))}
+      {/* carapace dome */}
+      <circle cx="20" cy="20" r="6.2" fill="#6366f1" stroke="#ffffff" strokeWidth={1.2} />
+      <ellipse cx="18.2" cy="18" rx="2.3" ry="1.5" fill="#a5b4fc" opacity="0.75" />
     </svg>
   );
 }
