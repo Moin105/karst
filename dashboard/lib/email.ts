@@ -1,23 +1,34 @@
-import { Resend } from 'resend';
+import nodemailer, { type Transporter } from 'nodemailer';
 
-// Email is best-effort. If RESEND_API_KEY is unset (e.g. local dev), every
-// function below quietly no-ops so signups still succeed. Callers should also
-// wrap calls in try/catch — a mail failure must never break the signup path.
+// Email is best-effort. If SMTP isn't configured (no SMTP_HOST/USER/PASS, e.g.
+// local dev), every function below quietly no-ops so signups still succeed.
+// Callers should also wrap calls in try/catch — a mail failure must never break
+// the signup path.
 
-const FROM = process.env.EMAIL_FROM || 'karst <onboarding@resend.dev>';
+const FROM = process.env.EMAIL_FROM || process.env.SMTP_USER || 'karst.support@gmail.com';
 const REPLY_TO = process.env.EMAIL_REPLY_TO || undefined;
 const OWNER_NOTIFY = process.env.OWNER_NOTIFY_EMAIL || undefined;
 
-let _resend: Resend | null = null;
-function client(): Resend | null {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return null;
-  if (!_resend) _resend = new Resend(key);
-  return _resend;
+let _transport: Transporter | null = null;
+function transport(): Transporter | null {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) return null;
+  if (!_transport) {
+    const port = Number(process.env.SMTP_PORT || 465);
+    _transport = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465, // 465 = implicit TLS; 587 = STARTTLS
+      auth: { user, pass },
+    });
+  }
+  return _transport;
 }
 
 export function emailEnabled(): boolean {
-  return Boolean(process.env.RESEND_API_KEY);
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
 function welcomeHtml(): string {
@@ -42,30 +53,28 @@ function welcomeHtml(): string {
 
 /** Welcome email to a brand-new waitlist signup. Returns true if actually sent. */
 export async function sendSignupWelcome(to: string): Promise<boolean> {
-  const resend = client();
-  if (!resend) return false;
-  const { error } = await resend.emails.send({
+  const t = transport();
+  if (!t) return false;
+  await t.sendMail({
     from: FROM,
     to,
     replyTo: REPLY_TO,
     subject: "You're on the karst waitlist",
     html: welcomeHtml(),
   });
-  if (error) throw new Error(`resend: ${error.message ?? String(error)}`);
   return true;
 }
 
 /** Optional internal ping so the owner knows someone signed up. */
 export async function notifyOwnerOfSignup(signupEmail: string, source?: string | null): Promise<boolean> {
-  const resend = client();
-  if (!resend || !OWNER_NOTIFY) return false;
-  const { error } = await resend.emails.send({
+  const t = transport();
+  if (!t || !OWNER_NOTIFY) return false;
+  await t.sendMail({
     from: FROM,
     to: OWNER_NOTIFY,
     replyTo: signupEmail,
     subject: `New karst signup: ${signupEmail}`,
     text: `New waitlist signup\n\nemail: ${signupEmail}\nsource: ${source || 'unknown'}`,
   });
-  if (error) throw new Error(`resend: ${error.message ?? String(error)}`);
   return true;
 }

@@ -9,5 +9,5 @@ module.exports = {
   experimental: {
     serverActions: { bodySizeLimit: '2mb' },
   },
-  serverExternalPackages: ['pg'],
+  serverExternalPackages: ['pg', 'nodemailer'],
 };
