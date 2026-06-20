@@ -7,11 +7,12 @@ export async function GET() {
   let schemaReady = false;
   try {
     const db = await getClient();
+    // to_regclass returns NULL when the table doesn't exist (Postgres has no
+    // sqlite_master catalog).
     const r = await db.execute(
-      `SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='signups'`
+      `SELECT (to_regclass('public.signups') IS NOT NULL) AS present`
     );
-    const n = Number((r.rows[0] as unknown as { n: number })?.n ?? 0);
-    schemaReady = n > 0;
+    schemaReady = Boolean((r.rows[0] as unknown as { present: boolean })?.present);
   } catch {
     schemaReady = false;
   }
@@ -19,7 +20,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     version: '0.1.0',
-    db: 'libsql',
+    db: 'postgres',
     schema_ready: schemaReady,
   });
 }

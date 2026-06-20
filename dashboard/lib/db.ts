@@ -1,4 +1,13 @@
-import { createClient, type Client, type InArgs, type ResultSet } from '@libsql/client';
+import pg from 'pg';
+
+const { Pool } = pg;
+
+// node-postgres returns bigint (int8) and numeric as JS strings by default.
+// Our ids, timestamps (unix-ms), COUNT(*) and AVG()/SUM() results are all well
+// within Number.MAX_SAFE_INTEGER, so coerce them to numbers globally. This only
+// touches int8 (OID 20) and numeric (OID 1700) — text columns are never affected.
+pg.types.setTypeParser(20, (v) => parseInt(v, 10));
+pg.types.setTypeParser(1700, (v) => parseFloat(v));
 
 // ---------- Types ----------
 export type Signup = {
@@ -69,74 +78,74 @@ export type BlogPost = {
   created_at: number;
 };
 
-// ---------- libsql client (Turso) ----------
-// Local dev:  TURSO_DATABASE_URL unset -> uses a local file:./karst.db
-// Production: set TURSO_DATABASE_URL=libsql://<db>.turso.io and TURSO_AUTH_TOKEN
+// ---------- Postgres (Neon) ----------
+// Local dev:   DATABASE_URL=postgres://user:pass@localhost:5432/karst  (no SSL)
+// Production:  DATABASE_URL=postgres://...neon.tech/...?sslmode=require (Neon
+//              pooled connection string)
 //
-// The SQL is plain SQLite — Turso/libsql speaks the same dialect, so nothing
-// in the queries below changed when we moved off better-sqlite3. The only
-// difference is that every call is async.
+// The schema is plain PostgreSQL. Timestamps are stored as BIGINT unix-ms (the
+// app works in Date.now() milliseconds throughout), ids are BIGSERIAL.
 
 const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS signups (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     source TEXT,
     notes TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS design_partners (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT,
     company TEXT,
     vertical TEXT,
     status TEXT NOT NULL CHECK(status IN ('lead','contacted','demo_booked','piloting','paying','lost')) DEFAULT 'lead',
-    last_touch INTEGER,
+    last_touch BIGINT,
     notes_md TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS feedback (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     source TEXT NOT NULL CHECK(source IN ('cli','mcp','email','landing','other')),
     message TEXT NOT NULL,
     contact TEXT,
     severity TEXT CHECK(severity IN ('bug','idea','question','praise')) DEFAULT 'question',
     status TEXT NOT NULL CHECK(status IN ('new','triaged','replied','closed')) DEFAULT 'new',
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS installs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     anonymous_id TEXT NOT NULL,
     version TEXT,
     os TEXT,
     python_version TEXT,
     country TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS queries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     anonymous_id TEXT NOT NULL,
     repo_size_chunks INTEGER,
     tokens_used INTEGER,
-    cost_usd REAL,
+    cost_usd DOUBLE PRECISION,
     used_packs INTEGER DEFAULT 0,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS admin_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     email TEXT UNIQUE,
     password_hash TEXT,
-    created_at INTEGER
+    created_at BIGINT
   );
   CREATE TABLE IF NOT EXISTS blog_posts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     slug TEXT UNIQUE NOT NULL,
     title TEXT NOT NULL,
     body_md TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL CHECK(status IN ('draft','published')) DEFAULT 'draft',
-    published_at INTEGER,
-    created_at INTEGER NOT NULL
+    published_at BIGINT,
+    created_at BIGINT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_signups_email ON signups(email);
   CREATE INDEX IF NOT EXISTS idx_design_partners_status ON design_partners(status);
@@ -146,44 +155,102 @@ const SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug);
 `;
 
-let _client: Client | null = null;
+let _pool: pg.Pool | null = null;
 let _ready: Promise<void> | null = null;
 
-function rawClient(): Client {
-  if (!_client) {
-    const url = process.env.TURSO_DATABASE_URL || 'file:./karst.db';
-    const authToken = process.env.TURSO_AUTH_TOKEN;
-    _client = createClient(authToken ? { url, authToken } : { url });
+function makePool(): pg.Pool {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('DATABASE_URL is not set');
   }
-  return _client;
+  // Local Postgres speaks plaintext; hosted providers (Neon) require TLS.
+  const isLocal = /@(localhost|127\.0\.0\.1|0\.0\.0\.0|host\.docker\.internal)(:|\/)/.test(
+    connectionString
+  );
+  const pool = new Pool({
+    connectionString,
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+    max: 5,
+    // Close idle sockets before Neon's pooler/autosuspend drops them out from
+    // under us (otherwise the next query sees "Connection terminated").
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+  });
+  // An error on an *idle* pooled client (Neon routinely closes idle sockets)
+  // is emitted on the pool. With no listener Node re-throws it as an uncaught
+  // exception, which kills the entire serverless instance. Handling it lets pg
+  // quietly evict the dead client and open a fresh one on the next query.
+  pool.on('error', (err) => {
+    console.error('[pg] idle client error:', err);
+  });
+  return pool;
 }
 
-/** Returns a client with the schema guaranteed to exist. */
-export async function getClient(): Promise<Client> {
-  const c = rawClient();
-  if (!_ready) _ready = c.executeMultiple(SCHEMA_SQL);
+function rawPool(): pg.Pool {
+  if (!_pool) _pool = makePool();
+  return _pool;
+}
+
+type SqlArgs = unknown[];
+
+type DbAdapter = {
+  execute: (q: { sql: string; args?: SqlArgs } | string) => Promise<{ rows: any[] }>;
+};
+
+/** Returns a thin client with the schema guaranteed to exist. */
+export async function getClient(): Promise<DbAdapter> {
+  const pool = rawPool();
+  if (!_ready) {
+    _ready = pool
+      .query(SCHEMA_SQL)
+      .then(() => undefined)
+      .catch((err: unknown) => {
+        // Several cold-started instances can race on CREATE ... IF NOT EXISTS;
+        // Postgres surfaces that as an "already exists"/"duplicate"/"tuple
+        // concurrently updated" error which is harmless — the object exists.
+        const msg = String((err as { message?: string })?.message || '').toLowerCase();
+        if (
+          msg.includes('already exists') ||
+          msg.includes('duplicate key') ||
+          msg.includes('tuple concurrently')
+        ) {
+          return undefined;
+        }
+        // A genuine failure (e.g. transient cold-start connection reset) must
+        // NOT be cached, or the whole warm instance stays broken. Un-memoize so
+        // the next request retries the bootstrap.
+        _ready = null;
+        throw err;
+      });
+  }
   await _ready;
-  return c;
+  return {
+    async execute(q) {
+      const sql = typeof q === 'string' ? q : q.sql;
+      const args = typeof q === 'string' ? [] : q.args ?? [];
+      const res = await pool.query(toPg(sql), args as unknown[]);
+      return { rows: res.rows };
+    },
+  };
 }
 
 const now = () => Date.now();
 
-// libsql returns each row as a special Row object (array-like, with a custom
-// prototype). React Server Components refuse to pass non-plain objects to
-// Client Components ("Only plain objects can be passed..."), so we rebuild each
-// row into a true plain object keyed by column name. Every helper funnels
-// through here, so this is the single point that guarantees serializable data.
-function rows<T>(r: ResultSet): T[] {
-  const cols = r.columns;
-  return r.rows.map((row) => {
-    const obj: Record<string, unknown> = {};
-    const arr = row as unknown as unknown[];
-    for (let i = 0; i < cols.length; i++) obj[cols[i]] = arr[i];
-    return obj as T;
-  });
+// Our SQL uses '?' positional placeholders (carried over from the SQLite layer);
+// Postgres wants $1, $2, ... . No query embeds a literal '?' inside a string
+// literal, so a left-to-right substitution is safe.
+function toPg(sql: string): string {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
 }
-function first<T>(r: ResultSet): T | null {
-  return rows<T>(r)[0] ?? null;
+
+// node-postgres already returns each row as a plain object keyed by column name,
+// with int8/numeric coerced to numbers by the parsers registered above.
+function rows<T>(r: { rows: any[] }): T[] {
+  return r.rows as T[];
+}
+function first<T>(r: { rows: any[] }): T | null {
+  return (r.rows[0] as T) ?? null;
 }
 
 // ---------- Signups ----------
@@ -191,16 +258,16 @@ export async function insertSignup(input: {
   email: string;
   source?: string;
   notes?: string;
-}): Promise<Signup> {
+}): Promise<Signup & { is_new: boolean }> {
   const db = await getClient();
   const r = await db.execute({
     sql: `INSERT INTO signups (email, source, notes, created_at) VALUES (?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET source = COALESCE(excluded.source, signups.source),
                                             notes = COALESCE(excluded.notes, signups.notes)
-          RETURNING *`,
+          RETURNING *, (xmax = 0) AS is_new`,
     args: [input.email, input.source ?? null, input.notes ?? null, now()],
   });
-  return first<Signup>(r)!;
+  return first<Signup & { is_new: boolean }>(r)!;
 }
 
 export async function listSignups(): Promise<Signup[]> {
@@ -213,7 +280,9 @@ export async function searchSignups(q: string): Promise<Signup[]> {
   const db = await getClient();
   const term = `%${q}%`;
   const r = await db.execute({
-    sql: `SELECT * FROM signups WHERE email LIKE ? OR source LIKE ? OR notes LIKE ? ORDER BY created_at DESC`,
+    // ILIKE keeps the case-insensitive behaviour SQLite's LIKE had (Postgres
+    // LIKE is case-sensitive).
+    sql: `SELECT * FROM signups WHERE email ILIKE ? OR source ILIKE ? OR notes ILIKE ? ORDER BY created_at DESC`,
     args: [term, term, term],
   });
   return rows<Signup>(r);
@@ -251,15 +320,15 @@ export async function updatePartner(id: number, patch: Partial<Partner>): Promis
     'name', 'email', 'company', 'vertical', 'status', 'last_touch', 'notes_md',
   ];
   const sets: string[] = [];
-  const vals: InArgs = [] as unknown as InArgs;
+  const vals: SqlArgs = [];
   for (const k of allowed) {
     if (k in patch) {
       sets.push(`${k} = ?`);
-      (vals as unknown[]).push((patch as Record<string, unknown>)[k] ?? null);
+      vals.push((patch as Record<string, unknown>)[k] ?? null);
     }
   }
   if (sets.length === 0) return getPartner(id);
-  (vals as unknown[]).push(id);
+  vals.push(id);
   const db = await getClient();
   const r = await db.execute({
     sql: `UPDATE design_partners SET ${sets.join(', ')} WHERE id = ? RETURNING *`,
@@ -321,7 +390,7 @@ export async function listFeedback(filters?: {
   severity?: FeedbackSeverity;
 }): Promise<Feedback[]> {
   const where: string[] = [];
-  const vals: unknown[] = [];
+  const vals: SqlArgs = [];
   if (filters?.status) { where.push('status = ?'); vals.push(filters.status); }
   if (filters?.source) { where.push('source = ?'); vals.push(filters.source); }
   if (filters?.severity) { where.push('severity = ?'); vals.push(filters.severity); }
@@ -330,7 +399,7 @@ export async function listFeedback(filters?: {
     (where.length ? ` WHERE ${where.join(' AND ')}` : '') +
     ` ORDER BY created_at DESC`;
   const db = await getClient();
-  const r = await db.execute({ sql, args: vals as InArgs });
+  const r = await db.execute({ sql, args: vals });
   return rows<Feedback>(r);
 }
 
@@ -343,7 +412,7 @@ export async function getFeedback(id: number): Promise<Feedback | null> {
 export async function updateFeedback(id: number, patch: Partial<Feedback>): Promise<Feedback | null> {
   const allowed: (keyof Feedback)[] = ['status', 'severity', 'message', 'contact', 'source'];
   const sets: string[] = [];
-  const vals: unknown[] = [];
+  const vals: SqlArgs = [];
   for (const k of allowed) {
     if (k in patch) {
       sets.push(`${k} = ?`);
@@ -355,7 +424,7 @@ export async function updateFeedback(id: number, patch: Partial<Feedback>): Prom
   const db = await getClient();
   const r = await db.execute({
     sql: `UPDATE feedback SET ${sets.join(', ')} WHERE id = ? RETURNING *`,
-    args: vals as InArgs,
+    args: vals,
   });
   return first<Feedback>(r);
 }
@@ -390,8 +459,9 @@ export async function installsPerDay(days: number): Promise<{ date: string; coun
   const db = await getClient();
   const since = now() - days * 24 * 60 * 60 * 1000;
   const r = await db.execute({
-    sql: `SELECT strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') AS date, COUNT(*) AS count
-          FROM installs WHERE created_at >= ? GROUP BY date ORDER BY date ASC`,
+    sql: `SELECT to_char(to_timestamp(created_at / 1000.0) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+                 COUNT(*) AS count
+          FROM installs WHERE created_at >= ? GROUP BY 1 ORDER BY 1 ASC`,
     args: [since],
   });
   return rows<{ date: string; count: number }>(r);
@@ -418,8 +488,9 @@ export async function queriesPerDay(days: number): Promise<{ date: string; count
   const db = await getClient();
   const since = now() - days * 24 * 60 * 60 * 1000;
   const r = await db.execute({
-    sql: `SELECT strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') AS date, COUNT(*) AS count
-          FROM queries WHERE created_at >= ? GROUP BY date ORDER BY date ASC`,
+    sql: `SELECT to_char(to_timestamp(created_at / 1000.0) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+                 COUNT(*) AS count
+          FROM queries WHERE created_at >= ? GROUP BY 1 ORDER BY 1 ASC`,
     args: [since],
   });
   return rows<{ date: string; count: number }>(r);
@@ -436,12 +507,12 @@ export async function costPerDay(days: number): Promise<{ date: string; avg_cost
   const db = await getClient();
   const since = now() - days * 24 * 60 * 60 * 1000;
   const r = await db.execute({
-    sql: `SELECT strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') AS date,
+    sql: `SELECT to_char(to_timestamp(created_at / 1000.0) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
                  AVG(cost_usd) AS avg_cost
           FROM queries
           WHERE created_at >= ? AND cost_usd IS NOT NULL
-          GROUP BY date
-          ORDER BY date ASC`,
+          GROUP BY 1
+          ORDER BY 1 ASC`,
     args: [since],
   });
   return rows<{ date: string; avg_cost: number }>(r);
@@ -479,7 +550,7 @@ export async function insertBlogPost(input: {
 export async function updateBlogPost(id: number, patch: Partial<BlogPost>): Promise<BlogPost | null> {
   const allowed: (keyof BlogPost)[] = ['slug', 'title', 'body_md', 'status', 'published_at'];
   const sets: string[] = [];
-  const vals: unknown[] = [];
+  const vals: SqlArgs = [];
   for (const k of allowed) {
     if (k in patch) {
       sets.push(`${k} = ?`);
@@ -498,7 +569,7 @@ export async function updateBlogPost(id: number, patch: Partial<BlogPost>): Prom
   const db = await getClient();
   const r = await db.execute({
     sql: `UPDATE blog_posts SET ${sets.join(', ')} WHERE id = ? RETURNING *`,
-    args: vals as InArgs,
+    args: vals,
   });
   return first<BlogPost>(r);
 }
@@ -537,7 +608,7 @@ export async function getKpis(): Promise<{
   const day = 24 * 60 * 60 * 1000;
   const week = 7 * day;
 
-  const n = async (sql: string, args: InArgs = []) => {
+  const n = async (sql: string, args: SqlArgs = []) => {
     const r = await db.execute({ sql, args });
     const row = first<{ c: number }>(r);
     return row?.c ?? 0;

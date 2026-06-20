@@ -9,5 +9,5 @@ module.exports = {
   experimental: {
     serverActions: { bodySizeLimit: '2mb' },
   },
-  serverExternalPackages: ['@libsql/client', '@libsql/isomorphic-ws'],
+  serverExternalPackages: ['pg'],
 };
