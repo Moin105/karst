@@ -23,27 +23,27 @@ export default async function FeedbackDetailPage({
 }) {
   await requireAdmin();
   const { id } = await params;
-  const fb = getFeedback(Number(id));
+  const fb = await getFeedback(Number(id));
   if (!fb) notFound();
 
   async function markTriaged() {
     'use server';
     await requireAdmin();
-    updateFeedback(fb!.id, { status: 'triaged' });
+    await updateFeedback(fb!.id, { status: 'triaged' });
     redirect(`/feedback/${fb!.id}`);
   }
 
   async function markReplied() {
     'use server';
     await requireAdmin();
-    updateFeedback(fb!.id, { status: 'replied' });
+    await updateFeedback(fb!.id, { status: 'replied' });
     redirect(`/feedback/${fb!.id}`);
   }
 
   async function markClosed() {
     'use server';
     await requireAdmin();
-    updateFeedback(fb!.id, { status: 'closed' });
+    await updateFeedback(fb!.id, { status: 'closed' });
     redirect(`/feedback/${fb!.id}`);
   }
 

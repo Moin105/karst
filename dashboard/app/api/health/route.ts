@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getClient } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   let schemaReady = false;
   try {
-    const db = getDb();
-    const row = db
-      .prepare(
-        `SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='signups'`
-      )
-      .get() as { n: number };
-    schemaReady = row.n > 0;
+    const db = await getClient();
+    const r = await db.execute(
+      `SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='signups'`
+    );
+    const n = Number((r.rows[0] as unknown as { n: number })?.n ?? 0);
+    schemaReady = n > 0;
   } catch {
     schemaReady = false;
   }
@@ -18,7 +19,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     version: '0.1.0',
-    db: 'sqlite',
+    db: 'libsql',
     schema_ready: schemaReady,
   });
 }

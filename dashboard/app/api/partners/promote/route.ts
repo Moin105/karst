@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const partner = promoteSignupToPartner(parsed.data.signup_id, {
+    const partner = await promoteSignupToPartner(parsed.data.signup_id, {
       name: parsed.data.name,
       company: parsed.data.company,
       vertical: parsed.data.vertical,

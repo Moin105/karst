@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    insertFeedback({
+    await insertFeedback({
       source: parsed.data.source,
       message: parsed.data.message,
       contact: parsed.data.contact,

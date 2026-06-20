@@ -38,7 +38,7 @@ export async function PATCH(
   }
 
   try {
-    const updated = updateFeedback(id, parsed.data as any);
+    const updated = await updateFeedback(id, parsed.data as any);
     if (!updated) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }

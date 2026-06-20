@@ -44,7 +44,7 @@ export default async function FeedbackListPage({
   const statusFilter = coerceStatus(sp.status);
   const severityFilter = coerceSeverity(sp.severity);
 
-  const rows = listFeedback({
+  const rows = await listFeedback({
     status: statusFilter,
     severity: severityFilter,
   }) as Feedback[];

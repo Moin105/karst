@@ -36,7 +36,7 @@ export default async function NewPartnerPage() {
       const t = v.trim();
       return t ? t : undefined;
     };
-    const created = insertPartner({
+    const created = await insertPartner({
       name: String(formData.get('name') || '').trim() || 'Untitled',
       email: nullable(String(formData.get('email') || '')),
       company: nullable(String(formData.get('company') || '')),

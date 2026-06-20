@@ -16,7 +16,7 @@ function csvEscape(value: unknown): string {
 export async function GET() {
   await requireAdmin();
 
-  const rows = listSignups();
+  const rows = await listSignups();
 
   const header = ['id', 'email', 'source', 'notes', 'created_at'];
   const lines = [header.join(',')];

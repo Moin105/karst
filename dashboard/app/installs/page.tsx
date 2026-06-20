@@ -18,8 +18,8 @@ export default async function InstallsPage() {
   await requireAdmin();
 
   const [series, recent] = await Promise.all([
-    Promise.resolve(installsPerDay(30)),
-    Promise.resolve(listInstalls(50)),
+    installsPerDay(30),
+    listInstalls(50),
   ]);
 
   const totalInRange = series.reduce((acc, p) => acc + p.count, 0);

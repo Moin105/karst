@@ -29,10 +29,10 @@ function formatUsd(v: number) {
 export default async function AnalyticsPage() {
   await requireAdmin();
 
-  const queries = queriesPerDay(30);
-  const avgCost = avgCostPerQuery();
-  const tokensSaved = computeTokensSavedEstimate();
-  const costSeries = costPerDay(30);
+  const queries = await queriesPerDay(30);
+  const avgCost = await avgCostPerQuery();
+  const tokensSaved = await computeTokensSavedEstimate();
+  const costSeries = await costPerDay(30);
 
   const totalQueries30d = queries.reduce((acc, p) => acc + p.count, 0);
   const hasData = totalQueries30d > 0;

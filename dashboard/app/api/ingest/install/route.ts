@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    insertInstall({
+    await insertInstall({
       anonymous_id: parsed.data.anonymous_id,
       version: parsed.data.version,
       os: parsed.data.os,

@@ -37,12 +37,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    insertQuery({
+    await insertQuery({
       anonymous_id: parsed.data.anonymous_id,
       repo_size_chunks: parsed.data.repo_size_chunks,
       tokens_used: parsed.data.tokens_used,
       cost_usd: parsed.data.cost_usd,
-      used_packs: parsed.data.used_packs,
+      used_packs: parsed.data.used_packs ? 1 : 0,
     });
     return withCors(NextResponse.json({ ok: true }), origin);
   } catch {

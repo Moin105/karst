@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function ContentPage() {
   await requireAdmin();
 
-  const rows = listBlogPosts();
+  const rows = await listBlogPosts();
 
   const draftCount = rows.filter((r) => r.status === 'draft').length;
   const publishedCount = rows.filter((r) => r.status === 'published').length;

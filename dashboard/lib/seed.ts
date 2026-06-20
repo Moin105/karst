@@ -1,10 +1,8 @@
 import {
-  getDb,
+  getClient,
   insertSignup,
   insertPartner,
   insertFeedback,
-  insertInstall,
-  insertQuery,
   insertBlogPost,
 } from './db';
 
@@ -17,7 +15,7 @@ function randomChoice<T>(arr: T[]): T {
 }
 
 async function main() {
-  const db = getDb();
+  const db = await getClient();
   const now = Date.now();
 
   // Signups
@@ -28,14 +26,14 @@ async function main() {
   ];
   for (const s of signups) {
     try {
-      insertSignup(s);
-    } catch (e) {
+      await insertSignup(s);
+    } catch {
       /* ignore duplicates */
     }
   }
 
   // Partners
-  insertPartner({
+  await insertPartner({
     name: 'Bob Marshall',
     email: 'bob@fintech.dev',
     company: 'FinTech Dev',
@@ -44,7 +42,7 @@ async function main() {
     notes_md: `# Fintech lead\n\n- Interested in **MCP integration**\n- Wants demo next week\n- Budget: $5k/mo`,
   });
 
-  insertPartner({
+  await insertPartner({
     name: 'Carla Reyes',
     email: 'carla@healthtech.co',
     company: 'HealthTech Co',
@@ -54,14 +52,14 @@ async function main() {
   });
 
   // Feedback
-  insertFeedback({
+  await insertFeedback({
     source: 'cli',
     message: 'CLI hangs when indexing very large repos (>1M LOC). Repro: run karst index on chromium.',
     contact: 'user1@example.com',
     severity: 'bug',
   });
 
-  insertFeedback({
+  await insertFeedback({
     source: 'mcp',
     message: 'Could we get a pack for terraform modules? Would unlock IaC workflows.',
     contact: 'devops@bigco.com',
@@ -69,63 +67,54 @@ async function main() {
   });
 
   // Installs scattered over last 7 days
-  const installStmt = db.prepare(
-    `INSERT INTO installs (anonymous_id, version, os, python_version, country, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  );
   const oses = ['macos', 'linux', 'windows'];
   const countries = ['US', 'GB', 'DE', 'IN', 'CA'];
   for (let i = 0; i < 5; i++) {
-    const daysAgo = Math.random() * 7;
-    const ts = now - Math.floor(daysAgo * 24 * 60 * 60 * 1000);
-    installStmt.run(
-      randomId(),
-      '0.1.0',
-      randomChoice(oses),
-      '3.11.4',
-      randomChoice(countries),
-      ts
-    );
+    const ts = now - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000);
+    await db.execute({
+      sql: `INSERT INTO installs (anonymous_id, version, os, python_version, country, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [randomId(), '0.1.0', randomChoice(oses), '3.11.4', randomChoice(countries), ts],
+    });
   }
 
   // Queries scattered last 24h
-  const queryStmt = db.prepare(
-    `INSERT INTO queries (anonymous_id, repo_size_chunks, tokens_used, cost_usd, used_packs, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  );
   for (let i = 0; i < 12; i++) {
-    const hoursAgo = Math.random() * 24;
-    const ts = now - Math.floor(hoursAgo * 60 * 60 * 1000);
-    const cost = 0.01 + Math.random() * 0.04;
-    queryStmt.run(
-      randomId(),
-      Math.floor(500 + Math.random() * 5000),
-      Math.floor(2000 + Math.random() * 20000),
-      Number(cost.toFixed(4)),
-      Math.random() > 0.5 ? 1 : 0,
-      ts
-    );
+    const ts = now - Math.floor(Math.random() * 24 * 60 * 60 * 1000);
+    const cost = Number((0.01 + Math.random() * 0.04).toFixed(4));
+    await db.execute({
+      sql: `INSERT INTO queries (anonymous_id, repo_size_chunks, tokens_used, cost_usd, used_packs, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [
+        randomId(),
+        Math.floor(500 + Math.random() * 5000),
+        Math.floor(2000 + Math.random() * 20000),
+        cost,
+        Math.random() > 0.5 ? 1 : 0,
+        ts,
+      ],
+    });
   }
 
   // Blog posts
   try {
-    insertBlogPost({
+    await insertBlogPost({
       slug: 'why-karst',
-      title: 'Why we built Karst',
-      body_md: `# Why we built Karst\n\nMost LLM tools waste tokens. We don't.\n\n## The problem\n\nIndexing entire codebases blows up token budgets.\n\n## Our approach\n\nSmart chunking + caching + packs.`,
+      title: 'Why we built karst',
+      body_md: `# Why we built karst\n\nMost LLM tools waste tokens. We don't.\n\n## The problem\n\nIndexing entire codebases blows up token budgets.\n\n## Our approach\n\nSmart chunking + caching + packs.`,
       status: 'published',
     });
-  } catch (e) {
+  } catch {
     /* ignore */
   }
   try {
-    insertBlogPost({
+    await insertBlogPost({
       slug: 'roadmap-2026',
       title: 'Roadmap 2026 (draft)',
       body_md: `# 2026 roadmap\n\n- MCP server\n- Terraform pack\n- VS Code extension\n- Self-hosted option`,
       status: 'draft',
     });
-  } catch (e) {
+  } catch {
     /* ignore */
   }
 
@@ -133,16 +122,16 @@ async function main() {
   const tables = ['signups', 'design_partners', 'feedback', 'installs', 'queries', 'blog_posts'];
   const summary: Record<string, number> = {};
   for (const t of tables) {
-    const row = db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get() as { c: number };
-    summary[t] = row.c;
+    const r = await db.execute(`SELECT COUNT(*) AS c FROM ${t}`);
+    summary[t] = (r.rows[0] as unknown as { c: number }).c;
   }
   console.log('Seed complete:');
   console.table(summary);
 }
 
-if (require.main === module) {
-  main().catch((err) => {
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
     console.error(err);
     process.exit(1);
   });
-}

@@ -16,7 +16,7 @@ async function promoteAction(formData: FormData) {
   'use server';
   const id = Number(formData.get('id'));
   const { promoteSignupToPartner } = await import('@/lib/db');
-  promoteSignupToPartner(id, {});
+  await promoteSignupToPartner(id, {});
   revalidatePath('/signups');
   revalidatePath('/partners');
 }
@@ -40,7 +40,7 @@ export default async function SignupsPage({
 
   const params = (await searchParams) ?? {};
   const q = (params.q ?? '').trim();
-  const rows: Signup[] = q ? searchSignups(q) : listSignups();
+  const rows: Signup[] = q ? await searchSignups(q) : await listSignups();
 
   const columns = [
     {

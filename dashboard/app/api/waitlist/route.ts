@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    insertSignup({
+    await insertSignup({
       email: parsed.data.email.trim().toLowerCase(),
       source: parsed.data.source,
     });

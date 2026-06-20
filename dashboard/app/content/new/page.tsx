@@ -26,10 +26,10 @@ function slugify(s: string): string {
     .slice(0, 80);
 }
 
-function uniqueSlug(base: string): string {
+async function uniqueSlug(base: string): Promise<string> {
   let candidate = base || `post-${Date.now()}`;
   let i = 2;
-  while (getBlogPostBySlug(candidate)) {
+  while (await getBlogPostBySlug(candidate)) {
     candidate = `${base}-${i}`;
     i += 1;
   }
@@ -50,9 +50,9 @@ async function createPostAction(formData: FormData) {
   }
 
   const baseSlug = slugify(title);
-  const slug = uniqueSlug(baseSlug);
+  const slug = await uniqueSlug(baseSlug);
 
-  insertBlogPost({ slug, title, body_md, status });
+  await insertBlogPost({ slug, title, body_md, status });
   revalidatePath('/content');
   redirect('/content');
 }

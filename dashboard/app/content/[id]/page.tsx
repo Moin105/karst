@@ -52,7 +52,7 @@ async function updateBlogPostAction(formData: FormData) {
     redirect('/content');
   }
 
-  const existing = getBlogPostById(id);
+  const existing = await getBlogPostById(id);
   if (!existing) {
     redirect('/content');
   }
@@ -64,7 +64,7 @@ async function updateBlogPostAction(formData: FormData) {
   const slugInput = String(formData.get('slug') ?? '').trim();
   const slug = slugInput ? slugify(slugInput) : existing!.slug;
 
-  updateBlogPost(id, { title, body_md, status, slug });
+  await updateBlogPost(id, { title, body_md, status, slug });
   revalidatePath('/content');
   revalidatePath(`/content/${id}`);
   redirect(`/content/${id}`);
@@ -74,11 +74,11 @@ async function toggleStatusAction(formData: FormData) {
   'use server';
   await requireAdmin();
   const id = Number(formData.get('id'));
-  const existing = getBlogPostById(id);
+  const existing = await getBlogPostById(id);
   if (!existing) redirect('/content');
   const next: BlogStatus =
     existing!.status === 'published' ? 'draft' : 'published';
-  updateBlogPost(id, { status: next });
+  await updateBlogPost(id, { status: next });
   revalidatePath('/content');
   revalidatePath(`/content/${id}`);
   redirect(`/content/${id}`);
@@ -94,7 +94,7 @@ export default async function EditContentPage({
   const postId = Number(id);
   if (!Number.isFinite(postId) || postId <= 0) notFound();
 
-  const post = getBlogPostById(postId);
+  const post = await getBlogPostById(postId);
   if (!post) notFound();
 
   return (
