@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.env
+.env.local
+karst.db
+karst.db-journal
+*.log

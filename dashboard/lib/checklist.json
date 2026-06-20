@@ -1,0 +1,42 @@
+[
+  {
+    "id": "submit-mcp-registry",
+    "text": "Submit MCP server to modelcontextprotocol/servers registry",
+    "status": "pending"
+  },
+  {
+    "id": "outreach-emails",
+    "text": "Send 5 outreach emails today",
+    "status": "pending"
+  },
+  {
+    "id": "weekly-numbers-tweet",
+    "text": "Publish weekly numbers tweet",
+    "status": "pending"
+  },
+  {
+    "id": "reply-open-feedback",
+    "text": "Reply to all open feedback",
+    "status": "pending"
+  },
+  {
+    "id": "book-demo-call",
+    "text": "Book 1 demo call this week",
+    "status": "pending"
+  },
+  {
+    "id": "advance-pipeline",
+    "text": "Review design-partner pipeline; advance at least 1 stage",
+    "status": "pending"
+  },
+  {
+    "id": "write-changelog",
+    "text": "Write 1 changelog entry",
+    "status": "pending"
+  },
+  {
+    "id": "update-oss-readme",
+    "text": "Update OSS README if anything changed",
+    "status": "pending"
+  }
+]
