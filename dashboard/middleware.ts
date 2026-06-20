@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Pages that don't need a session.
-const PUBLIC_PAGES = ['/login'];
+const PUBLIC_PAGES = ['/login', '/forgot', '/reset'];
 
 function isPublicPage(pathname: string): boolean {
   for (const p of PUBLIC_PAGES) {

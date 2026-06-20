@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { loginAction } from '@/lib/actions';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -109,6 +110,14 @@ export default function LoginPage() {
             )}
 
             <SubmitButton />
+
+            <Link
+              href="/forgot"
+              className="block text-center text-xs"
+              style={{ color: 'var(--text-dim)' }}
+            >
+              Forgot password?
+            </Link>
           </form>
         </div>
       </Card>

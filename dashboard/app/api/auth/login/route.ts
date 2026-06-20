@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { getIronSession } from 'iron-session';
 import { z } from 'zod';
-import { authenticatePassword, getSessionOptions, type SessionData } from '@/lib/auth';
+import { loginInternal } from '@/lib/auth';
 
 const BodySchema = z.object({
   email: z.string().email(),
@@ -24,16 +22,12 @@ export async function POST(request: Request) {
 
   const { email, password } = parsed.data;
 
-  if (!authenticatePassword(email, password)) {
+  // Route through loginInternal so credential verification (awaited!) and the
+  // session-minting/epoch logic live in exactly one place.
+  const result = await loginInternal(email, password);
+  if (result !== 'ok') {
     return NextResponse.json({ error: 'invalid' }, { status: 401 });
   }
-
-  const cookieStore = await cookies();
-  const session = await getIronSession<SessionData>(cookieStore, getSessionOptions());
-  session.userId = 'admin';
-  session.email = email.trim().toLowerCase();
-  session.createdAt = Date.now();
-  await session.save();
 
   return NextResponse.json({ ok: true });
 }

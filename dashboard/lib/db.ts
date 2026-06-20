@@ -147,12 +147,22 @@ const SCHEMA_SQL = `
     published_at BIGINT,
     created_at BIGINT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id BIGSERIAL PRIMARY KEY,
+    email TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
+    expires_at BIGINT NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token_hash);
   CREATE INDEX IF NOT EXISTS idx_signups_email ON signups(email);
   CREATE INDEX IF NOT EXISTS idx_design_partners_status ON design_partners(status);
   CREATE INDEX IF NOT EXISTS idx_feedback_status_created ON feedback(status, created_at);
   CREATE INDEX IF NOT EXISTS idx_installs_created ON installs(created_at);
   CREATE INDEX IF NOT EXISTS idx_queries_created ON queries(created_at);
   CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug);
+  ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS session_epoch BIGINT;
 `;
 
 let _pool: pg.Pool | null = null;
@@ -627,4 +637,75 @@ export async function getKpis(): Promise<{
   const avg_cost_query = first<{ a: number | null }>(avgRes)?.a ?? 0;
 
   return { new_signups_24h, installs_7d, queries_24h, open_feedback, total_partners, avg_cost_query };
+}
+
+// ---------- Admin auth (DB-backed password, for self-serve reset) ----------
+// The admin password starts from KARST_ADMIN_PASSWORD_HASH (env). Once the admin
+// resets it, the new hash lives here and takes precedence over the env value.
+export async function getAdminPasswordHash(email: string): Promise<string | null> {
+  const db = await getClient();
+  const r = await db.execute({
+    sql: `SELECT password_hash FROM admin_users WHERE lower(email) = lower(?) LIMIT 1`,
+    args: [email],
+  });
+  return first<{ password_hash: string | null }>(r)?.password_hash ?? null;
+}
+
+export async function setAdminPasswordHash(email: string, passwordHash: string): Promise<void> {
+  const db = await getClient();
+  const ts = now();
+  // Bump session_epoch on every password change so existing sessions (which
+  // carry the old epoch) are invalidated by getSession.
+  await db.execute({
+    sql: `INSERT INTO admin_users (email, password_hash, session_epoch, created_at) VALUES (?, ?, ?, ?)
+          ON CONFLICT(email) DO UPDATE SET password_hash = excluded.password_hash,
+                                            session_epoch = excluded.session_epoch`,
+    args: [email.toLowerCase(), passwordHash, ts, ts],
+  });
+}
+
+export async function getAdminSessionEpoch(email: string): Promise<number> {
+  const db = await getClient();
+  const r = await db.execute({
+    sql: `SELECT session_epoch FROM admin_users WHERE lower(email) = lower(?) LIMIT 1`,
+    args: [email],
+  });
+  return Number(first<{ session_epoch: number | null }>(r)?.session_epoch ?? 0);
+}
+
+// ---------- Password resets ----------
+/** True if a reset for this email was created at/after `sinceMs` (rate limit). */
+export async function recentPasswordResetExists(email: string, sinceMs: number): Promise<boolean> {
+  const db = await getClient();
+  const r = await db.execute({
+    sql: `SELECT 1 FROM password_resets WHERE lower(email) = lower(?) AND created_at >= ? LIMIT 1`,
+    args: [email, sinceMs],
+  });
+  return r.rows.length > 0;
+}
+
+export async function createPasswordReset(email: string, tokenHash: string, expiresAt: number): Promise<void> {
+  const db = await getClient();
+  const lower = email.toLowerCase();
+  // Only the newest link should work: invalidate any still-outstanding tokens
+  // for this email, and opportunistically prune long-dead rows.
+  await db.execute({ sql: `UPDATE password_resets SET used = 1 WHERE lower(email) = lower(?) AND used = 0`, args: [lower] });
+  await db.execute({ sql: `DELETE FROM password_resets WHERE used = 1 AND expires_at < ?`, args: [now() - 24 * 60 * 60 * 1000] });
+  await db.execute({
+    sql: `INSERT INTO password_resets (email, token_hash, expires_at, used, created_at) VALUES (?, ?, ?, 0, ?)`,
+    args: [lower, tokenHash, expiresAt, now()],
+  });
+}
+
+/** Atomically consume a valid (unused, unexpired) reset token. Returns the
+ *  associated email if it was valid, else null. */
+export async function consumePasswordReset(tokenHash: string): Promise<string | null> {
+  const db = await getClient();
+  const r = await db.execute({
+    sql: `UPDATE password_resets SET used = 1
+          WHERE token_hash = ? AND used = 0 AND expires_at > ?
+          RETURNING email`,
+    args: [tokenHash, now()],
+  });
+  return first<{ email: string }>(r)?.email ?? null;
 }

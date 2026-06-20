@@ -1,12 +1,16 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getIronSession, type SessionOptions } from 'iron-session';
-import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
+import { scryptSync, randomBytes, timingSafeEqual, createHash } from 'node:crypto';
+import { getAdminPasswordHash, getAdminSessionEpoch } from './db';
 
 export type SessionData = {
   userId: string;
   email: string;
   createdAt: number;
+  // Bumped whenever the password is reset; a session is valid only while its
+  // epoch matches the admin's current epoch (so a reset logs out old sessions).
+  epoch?: number;
 };
 
 const SCRYPT_N = 16384;
@@ -60,14 +64,28 @@ export function verifyPassword(plain: string, encoded: string): boolean {
   }
 }
 
-export function authenticatePassword(email: string, password: string): boolean {
+export async function authenticatePassword(email: string, password: string): Promise<boolean> {
   const adminEmail = process.env.KARST_ADMIN_EMAIL;
-  const adminHash = process.env.KARST_ADMIN_PASSWORD_HASH;
-  if (!adminEmail || !adminHash) return false;
-  if (!email || !password) return false;
+  if (!adminEmail || !email || !password) return false;
   const emailOk = email.trim().toLowerCase() === adminEmail.trim().toLowerCase();
-  const passOk = verifyPassword(password, adminHash);
-  return emailOk && passOk;
+  if (!emailOk) return false;
+  // Prefer a hash stored by a password reset; fall back to the env hash ONLY
+  // when the DB definitively has no admin row. On a DB error, fail closed — we
+  // must never silently honor the (possibly retired) env password.
+  let dbHash: string | null;
+  try {
+    dbHash = await getAdminPasswordHash(adminEmail);
+  } catch {
+    return false;
+  }
+  const hash = dbHash ?? process.env.KARST_ADMIN_PASSWORD_HASH ?? null;
+  if (!hash) return false;
+  return verifyPassword(password, hash);
+}
+
+/** SHA-256 of a reset token — we only ever store the hash, never the token. */
+export function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 export function getSessionOptions(): SessionOptions {
@@ -91,6 +109,14 @@ export async function getSession(): Promise<{ userId: string; email: string } | 
   const cookieStore = await cookies();
   const session = await getIronSession<SessionData>(cookieStore, getSessionOptions());
   if (!session || !session.userId || !session.email) return null;
+  // Invalidate sessions minted before the last password reset (session epoch).
+  // Best-effort: a transient DB error must not forcibly log the admin out.
+  try {
+    const currentEpoch = await getAdminSessionEpoch(session.email);
+    if ((session.epoch ?? 0) !== currentEpoch) return null;
+  } catch {
+    /* DB hiccup — keep the session rather than locking out on a blip */
+  }
   return { userId: session.userId, email: session.email };
 }
 
@@ -108,7 +134,7 @@ export async function loginInternal(
   email: string,
   password: string
 ): Promise<'ok' | 'invalid'> {
-  if (!authenticatePassword(email, password)) return 'invalid';
+  if (!(await authenticatePassword(email, password))) return 'invalid';
   const cookieStore = await cookies();
   const session = await getIronSession<SessionData>(
     cookieStore,
@@ -117,6 +143,11 @@ export async function loginInternal(
   session.userId = 'admin';
   session.email = email.trim().toLowerCase();
   session.createdAt = Date.now();
+  try {
+    session.epoch = await getAdminSessionEpoch(session.email);
+  } catch {
+    session.epoch = 0;
+  }
   await session.save();
   return 'ok';
 }
