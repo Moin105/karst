@@ -3,42 +3,65 @@ export interface LogoProps {
 }
 
 /**
- * karst mark — Rocky, the Eridian, as he appears preserved in his crystalline
- * containment case (Project Hail Mary): a faceted warm-stone specimen with a
- * small green gem, framed by a translucent crystal.
+ * karst mark — an original faceted rock-creature: a stone-textured body with
+ * raised arms and a small emerald gem. Nods to karst (rocky terrain) without
+ * copying any specific character. Stone facets use speckled/hatched patterns.
  */
 export function Logo({ size = 28 }: LogoProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 40 40"
+      viewBox="0 0 64 64"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       aria-label="karst logo"
     >
-      {/* crystal containment */}
-      <polygon points="20,2.5 36,20 20,37.5 4,20" fill="#818cf8" fillOpacity={0.07} stroke="#c7d2fe" strokeOpacity={0.5} strokeWidth={1} strokeLinejoin="round" />
-      <line x1="20" y1="2.5" x2="13" y2="11" stroke="#e0e7ff" strokeOpacity={0.4} strokeWidth={0.8} strokeLinecap="round" />
+      <defs>
+        <pattern id="ksStoneL" width={6} height={6} patternUnits="userSpaceOnUse">
+          <rect width={6} height={6} fill="#cca57a" />
+          <circle cx={1.5} cy={2} r={0.7} fill="#a3744a" />
+          <circle cx={4.6} cy={4.4} r={0.6} fill="#a3744a" />
+          <circle cx={3.2} cy={0.8} r={0.4} fill="#e6cca0" />
+          <path d="M0 6L6 0" stroke="#a3744a" strokeWidth={0.35} opacity={0.5} />
+        </pattern>
+        <pattern id="ksStoneM" width={6} height={6} patternUnits="userSpaceOnUse">
+          <rect width={6} height={6} fill="#b9895c" />
+          <circle cx={2} cy={1.6} r={0.7} fill="#8f6840" />
+          <circle cx={4.8} cy={4} r={0.6} fill="#8f6840" />
+          <circle cx={1} cy={4.6} r={0.4} fill="#cca57a" />
+          <path d="M0 6L6 0" stroke="#8f6840" strokeWidth={0.35} opacity={0.5} />
+        </pattern>
+        <pattern id="ksStoneD" width={6} height={6} patternUnits="userSpaceOnUse">
+          <rect width={6} height={6} fill="#8f6840" />
+          <circle cx={1.6} cy={2.2} r={0.7} fill="#5c4226" />
+          <circle cx={4.4} cy={4.6} r={0.6} fill="#5c4226" />
+          <circle cx={3} cy={1} r={0.4} fill="#b9895c" />
+          <path d="M0 6L6 0" stroke="#5c4226" strokeWidth={0.35} opacity={0.5} />
+        </pattern>
+      </defs>
 
-      {/* faceted rock body */}
-      <g stroke="#4a3420" strokeWidth={0.6} strokeLinejoin="round">
-        <polygon points="20,7 31,14 19,19" fill="#c39a6b" />
-        <polygon points="31,14 28,30 19,19" fill="#a3744a" />
-        <polygon points="28,30 16,33 19,19" fill="#8f6840" />
-        <polygon points="16,33 9,24 19,19" fill="#a87c54" />
-        <polygon points="9,24 11,12 19,19" fill="#b9895c" />
-        <polygon points="11,12 20,7 19,19" fill="#cca57a" />
-      </g>
-      <polygon points="20,7 31,14 19,19 11,12" fill="#d9b88c" opacity={0.35} />
-      <path d="M19,19 L22,24 M19,19 L15,21" stroke="#5c4226" strokeWidth={0.5} fill="none" strokeLinecap="round" />
+      {/* legs */}
+      <path d="M26 55L21 62M38 55L43 62" stroke="#3a2a18" strokeWidth={5} strokeLinecap="round" />
+      <path d="M26 55L21 62M38 55L43 62" stroke="#a3744a" strokeWidth={3} strokeLinecap="round" />
 
-      {/* green gem */}
-      <circle cx="24" cy="12.5" r="1.7" fill="#34d399" />
-      <circle cx="23.4" cy="11.9" r="0.5" fill="#d1fae5" />
+      {/* arms + claws */}
+      <path d="M22 36L12 24L8 13M42 36L52 24L56 13" stroke="#3a2a18" strokeWidth={6.5} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 13L5 8M8 13L11 8M56 13L53 8M56 13L59 8" stroke="#3a2a18" strokeWidth={3} strokeLinecap="round" />
+      <path d="M22 36L12 24L8 13M42 36L52 24L56 13" stroke="#b9895c" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
 
-      {/* crisp outline */}
-      <polygon points="20,7 31,14 28,30 16,33 9,24 11,12" fill="none" stroke="#3a2a18" strokeWidth={1} strokeLinejoin="round" />
+      {/* faceted, patterned stone body */}
+      <polygon points="32,28 18,38 24,56 32,52" fill="url(#ksStoneM)" />
+      <polygon points="32,28 46,38 40,56 32,52" fill="url(#ksStoneD)" />
+      <polygon points="24,33 32,28 40,33 32,38" fill="url(#ksStoneL)" />
+      <polygon points="32,28 46,38 40,56 24,56 18,38" fill="none" stroke="#3a2a18" strokeWidth={1.2} strokeLinejoin="round" />
+      <line x1={32} y1={38} x2={32} y2={52} stroke="#3a2a18" strokeWidth={0.8} />
+
+      {/* emerald gem + joint accents */}
+      <circle cx={12} cy={24} r={1.7} fill="#34d399" />
+      <circle cx={52} cy={24} r={1.7} fill="#34d399" />
+      <circle cx={32} cy={42} r={2.7} fill="#34d399" />
+      <circle cx={31.1} cy={41.1} r={0.9} fill="#d1fae5" />
     </svg>
   );
 }
