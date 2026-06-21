@@ -74,6 +74,15 @@ const H1 = 'margin:0 0 14px;font-size:22px;line-height:1.3;font-weight:700;color
 const P = 'margin:0 0 16px;font-size:15px;line-height:1.65;color:#475569';
 const MUTED = 'margin:18px 0 0;font-size:13px;line-height:1.6;color:#94a3b8';
 
+// Escape user-supplied text before inlining it into an HTML email body.
+function esc(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ── Senders ─────────────────────────────────────────────────────────────────
 
 async function send(opts: { to: string; subject: string; html: string; text?: string; replyTo?: string }): Promise<boolean> {
@@ -132,6 +141,43 @@ export async function notifyOwnerOfSignup(signupEmail: string, source?: string |
     subject: `New karst signup: ${signupEmail}`,
     html: shell({ preview: `New signup: ${signupEmail}`, body }),
     text: `New waitlist signup\n\nemail: ${signupEmail}\nsource: ${source || 'unknown'}`,
+  });
+}
+
+/** Notify the owner when someone sends feedback / a question from anywhere
+ *  (landing form, CLI, MCP). Best-effort. Recipient falls back through
+ *  OWNER_NOTIFY_EMAIL → KARST_ADMIN_EMAIL → SMTP_USER so it works without extra
+ *  config. The message/contact are user-supplied, so they are HTML-escaped. */
+export async function notifyOwnerOfFeedback(input: {
+  message: string;
+  contact?: string | null;
+  severity?: string | null;
+  source?: string | null;
+}): Promise<boolean> {
+  const to =
+    process.env.OWNER_NOTIFY_EMAIL || process.env.KARST_ADMIN_EMAIL || process.env.SMTP_USER;
+  if (!to) return false;
+
+  const kind = (input.severity || 'message').toLowerCase();
+  const contact = input.contact?.trim() || null;
+  const replyTo = contact && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact) ? contact : undefined;
+
+  const body = `
+    <h1 style="${H1}">New ${esc(kind)} from karst</h1>
+    <p style="${P}">Someone sent a message${input.source ? ` via <strong style="color:#0f172a">${esc(String(input.source))}</strong>` : ''}.</p>
+    <div style="margin:0 0 16px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.65;color:#0f172a;white-space:pre-wrap">${esc(input.message)}</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0">
+      <tr><td style="padding:2px 0;font-size:14px;color:#475569"><strong style="color:#0f172a">From:</strong>&nbsp; ${contact ? esc(contact) : 'anonymous'}</td></tr>
+      <tr><td style="padding:2px 0;font-size:14px;color:#475569"><strong style="color:#0f172a">Type:</strong>&nbsp; ${esc(kind)}</td></tr>
+    </table>
+    <p style="${MUTED}">${replyTo ? 'Reply directly to this email to respond to them.' : 'No contact was provided, so you can’t reply by email.'} Manage it in the feedback inbox.</p>
+  `;
+  return send({
+    to,
+    replyTo,
+    subject: `karst ${kind}: ${input.message.slice(0, 60).replace(/\s+/g, ' ')}`,
+    html: shell({ preview: input.message.slice(0, 90), body }),
+    text: `New ${kind} from karst${input.source ? ` (${input.source})` : ''}\n\n${input.message}\n\nFrom: ${contact || 'anonymous'}`,
   });
 }
 

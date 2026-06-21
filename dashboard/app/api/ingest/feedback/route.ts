@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { insertFeedback } from '@/lib/db';
+import { notifyOwnerOfFeedback } from '@/lib/email';
 import { handleOptions, withCors } from '@/lib/cors';
 
 const BodySchema = z.object({
@@ -42,6 +43,19 @@ export async function POST(request: Request) {
       contact: parsed.data.contact,
       severity: parsed.data.severity,
     });
+
+    // Best-effort owner ping — a mail failure must never fail the submission.
+    try {
+      await notifyOwnerOfFeedback({
+        message: parsed.data.message,
+        contact: parsed.data.contact,
+        severity: parsed.data.severity,
+        source: parsed.data.source,
+      });
+    } catch (err) {
+      console.error('[ingest/feedback] owner notify failed:', err);
+    }
+
     return withCors(NextResponse.json({ ok: true }), origin);
   } catch {
     return withCors(
