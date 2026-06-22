@@ -3,11 +3,12 @@ import { z } from 'zod';
 import { insertFeedback } from '@/lib/db';
 import { notifyOwnerOfFeedback } from '@/lib/email';
 import { handleOptions, withCors } from '@/lib/cors';
+import { rateLimit, clientIp } from '@/lib/ratelimit';
 
 const BodySchema = z.object({
   source: z.enum(['cli', 'mcp', 'email', 'landing', 'other']),
-  message: z.string().min(1),
-  contact: z.string().optional(),
+  message: z.string().min(1).max(10_000),
+  contact: z.string().max(200).optional(),
   severity: z.enum(['bug', 'idea', 'question', 'praise']).optional(),
 });
 
@@ -17,6 +18,16 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   const origin = request.headers.get('origin');
+
+  // This endpoint sends an owner email per submission — rate-limit hard to
+  // block email-bombing / DB-flooding from an unauthenticated caller.
+  const rl = rateLimit(`feedback:${clientIp(request)}`, 5, 60_000);
+  if (!rl.ok) {
+    return withCors(
+      NextResponse.json({ error: 'rate_limited' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }),
+      origin
+    );
+  }
 
   let raw: unknown;
   try {
@@ -31,7 +42,7 @@ export async function POST(request: Request) {
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
     return withCors(
-      NextResponse.json({ error: 'invalid', details: parsed.error.flatten() }, { status: 400 }),
+      NextResponse.json({ error: 'invalid' }, { status: 400 }),
       origin
     );
   }

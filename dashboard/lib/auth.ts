@@ -93,6 +93,11 @@ export function getSessionOptions(): SessionOptions {
   if (!password) {
     throw new Error('KARST_SESSION_SECRET is not set');
   }
+  // iron-session derives the AES key from this; a short secret is brute-forceable
+  // and would let an attacker forge sessions. Fail closed on a weak secret.
+  if (Buffer.byteLength(password, 'utf8') < 32) {
+    throw new Error('KARST_SESSION_SECRET must be at least 32 bytes (e.g. `openssl rand -hex 32`).');
+  }
   return {
     cookieName: 'karst_session',
     password,
