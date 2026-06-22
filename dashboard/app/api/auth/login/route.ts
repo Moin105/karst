@@ -1,13 +1,24 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { loginInternal } from '@/lib/auth';
+import { rateLimit, clientIp } from '@/lib/ratelimit';
 
 const BodySchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email().max(254),
+  password: z.string().min(1).max(256),
 });
 
 export async function POST(request: Request) {
+  // Throttle credential guessing: 10 attempts / 15 min per IP. (scrypt is ~100ms
+  // per try, but a script can still grind without this.)
+  const rl = rateLimit(`login:${clientIp(request)}`, 10, 15 * 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }
+    );
+  }
+
   let raw: unknown;
   try {
     raw = await request.json();

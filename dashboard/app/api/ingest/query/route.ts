@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { insertQuery } from '@/lib/db';
 import { handleOptions, withCors } from '@/lib/cors';
+import { rateLimit, clientIp } from '@/lib/ratelimit';
 
 const BodySchema = z.object({
-  anonymous_id: z.string().min(1),
-  repo_size_chunks: z.number().int().nonnegative(),
-  tokens_used: z.number().int().nonnegative(),
-  cost_usd: z.number().nonnegative(),
+  anonymous_id: z.string().min(1).max(64),
+  repo_size_chunks: z.number().int().nonnegative().max(100_000_000),
+  tokens_used: z.number().int().nonnegative().max(1_000_000_000),
+  cost_usd: z.number().nonnegative().max(1_000_000),
   used_packs: z.boolean(),
 });
 
@@ -17,6 +18,14 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   const origin = request.headers.get('origin');
+
+  const rl = rateLimit(`query:${clientIp(request)}`, 60, 60_000);
+  if (!rl.ok) {
+    return withCors(
+      NextResponse.json({ error: 'rate_limited' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }),
+      origin
+    );
+  }
 
   let raw: unknown;
   try {
@@ -31,7 +40,7 @@ export async function POST(request: Request) {
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
     return withCors(
-      NextResponse.json({ error: 'invalid', details: parsed.error.flatten() }, { status: 400 }),
+      NextResponse.json({ error: 'invalid' }, { status: 400 }),
       origin
     );
   }

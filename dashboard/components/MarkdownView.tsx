@@ -21,20 +21,26 @@ function escapeHtml(s: string): string {
 }
 
 function stripDangerous(html: string): string {
-  // Strip <script>, <style>, <iframe>, on* attributes, javascript: URLs.
+  // Defense-in-depth on top of escaping the source: kill dangerous URL schemes
+  // in any links markdown generates, plus any stray on*/embedded tags.
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
     .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
-    .replace(/javascript:/gi, '');
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
+    .replace(/(?:javascript|data|vbscript):/gi, '');
 }
 
 export function MarkdownView({ source, className }: MarkdownViewProps) {
   let html: string;
   try {
-    html = marked.parse(source ?? '', { async: false }) as string;
+    // Source is UNTRUSTED (user feedback). Escape HTML FIRST so raw tags like
+    // <img onerror=...> / <svg onload=...> become inert text — marked then only
+    // emits HTML from markdown syntax, which can't carry script. stripDangerous
+    // then neutralises javascript:/data: URLs in markdown-generated links.
+    html = marked.parse(escapeHtml(source ?? ''), { async: false }) as string;
     html = stripDangerous(html);
   } catch {
     html = `<pre>${escapeHtml(source ?? '')}</pre>`;

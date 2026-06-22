@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { insertSignup } from '@/lib/db';
 import { sendSignupWelcome, notifyOwnerOfSignup } from '@/lib/email';
 import { handleOptions, withCors } from '@/lib/cors';
+import { rateLimit, clientIp } from '@/lib/ratelimit';
 
 const BodySchema = z.object({
-  email: z.string().email(),
-  source: z.string().optional(),
+  email: z.string().email().max(254),
+  source: z.string().max(100).optional(),
 });
 
 export async function OPTIONS(request: Request) {
@@ -15,6 +16,16 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   const origin = request.headers.get('origin');
+
+  // Each signup sends a welcome + an owner email — rate-limit to stop
+  // email-bombing via a stream of throwaway addresses.
+  const rl = rateLimit(`waitlist:${clientIp(request)}`, 5, 60_000);
+  if (!rl.ok) {
+    return withCors(
+      NextResponse.json({ error: 'rate_limited' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }),
+      origin
+    );
+  }
 
   let raw: unknown;
   try {
@@ -29,7 +40,7 @@ export async function POST(request: Request) {
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
     return withCors(
-      NextResponse.json({ error: 'invalid', details: parsed.error.flatten() }, { status: 400 }),
+      NextResponse.json({ error: 'invalid' }, { status: 400 }),
       origin
     );
   }

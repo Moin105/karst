@@ -10,7 +10,10 @@ function getAllowedOrigins(): string[] {
 }
 
 function isOriginAllowed(origin: string, allowed: string[]): boolean {
-  if (allowed.includes('*')) return true;
+  // No wildcard: responses set Access-Control-Allow-Credentials: true, and the
+  // CORS spec forbids combining that with '*'. Only exact, explicitly-allowed
+  // origins are reflected — so a malicious site can never make a credentialed
+  // cross-origin request to the admin.
   return allowed.includes(origin);
 }
 

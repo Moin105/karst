@@ -31,10 +31,7 @@ export async function PATCH(
 
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'invalid', details: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
 
   try {

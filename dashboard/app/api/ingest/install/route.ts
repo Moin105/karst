@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { insertInstall } from '@/lib/db';
 import { handleOptions, withCors } from '@/lib/cors';
+import { rateLimit, clientIp } from '@/lib/ratelimit';
 
 const BodySchema = z.object({
-  anonymous_id: z.string().min(1),
-  version: z.string().min(1),
-  os: z.string().min(1),
-  python_version: z.string().optional(),
-  country: z.string().optional(),
+  anonymous_id: z.string().min(1).max(64),
+  version: z.string().min(1).max(32),
+  os: z.string().min(1).max(64),
+  python_version: z.string().max(32).optional(),
+  country: z.string().max(64).optional(),
 });
 
 export async function OPTIONS(request: Request) {
@@ -17,6 +18,14 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   const origin = request.headers.get('origin');
+
+  const rl = rateLimit(`install:${clientIp(request)}`, 30, 60_000);
+  if (!rl.ok) {
+    return withCors(
+      NextResponse.json({ error: 'rate_limited' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }),
+      origin
+    );
+  }
 
   let raw: unknown;
   try {
@@ -31,7 +40,7 @@ export async function POST(request: Request) {
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
     return withCors(
-      NextResponse.json({ error: 'invalid', details: parsed.error.flatten() }, { status: 400 }),
+      NextResponse.json({ error: 'invalid' }, { status: 400 }),
       origin
     );
   }

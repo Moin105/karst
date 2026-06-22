@@ -65,7 +65,7 @@ ${preview}
 function button(href: string, label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 4px">
     <tr><td style="border-radius:10px;background:#10b981">
-      <a href="${href}" style="display:inline-block;padding:13px 26px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px">${label}</a>
+      <a href="${esc(href)}" style="display:inline-block;padding:13px 26px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px">${label}</a>
     </td></tr>
   </table>`;
 }
@@ -131,15 +131,15 @@ export async function notifyOwnerOfSignup(signupEmail: string, source?: string |
     <h1 style="${H1}">New signup ✦</h1>
     <p style="${P}">Someone just joined the karst waitlist.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 6px">
-      <tr><td style="${P};margin:0;padding:2px 0;color:#0f172a"><strong>Email:</strong>&nbsp; ${signupEmail}</td></tr>
-      <tr><td style="${P};margin:0;padding:2px 0;color:#475569"><strong>Source:</strong>&nbsp; ${source || 'unknown'}</td></tr>
+      <tr><td style="${P};margin:0;padding:2px 0;color:#0f172a"><strong>Email:</strong>&nbsp; ${esc(signupEmail)}</td></tr>
+      <tr><td style="${P};margin:0;padding:2px 0;color:#475569"><strong>Source:</strong>&nbsp; ${esc(source || 'unknown')}</td></tr>
     </table>
   `;
   return send({
     to: OWNER_NOTIFY,
     replyTo: signupEmail,
     subject: `New karst signup: ${signupEmail}`,
-    html: shell({ preview: `New signup: ${signupEmail}`, body }),
+    html: shell({ preview: `New signup: ${esc(signupEmail)}`, body }),
     text: `New waitlist signup\n\nemail: ${signupEmail}\nsource: ${source || 'unknown'}`,
   });
 }
@@ -176,7 +176,7 @@ export async function notifyOwnerOfFeedback(input: {
     to,
     replyTo,
     subject: `karst ${kind}: ${input.message.slice(0, 60).replace(/\s+/g, ' ')}`,
-    html: shell({ preview: input.message.slice(0, 90), body }),
+    html: shell({ preview: esc(input.message.slice(0, 90)), body }),
     text: `New ${kind} from karst${input.source ? ` (${input.source})` : ''}\n\n${input.message}\n\nFrom: ${contact || 'anonymous'}`,
   });
 }
