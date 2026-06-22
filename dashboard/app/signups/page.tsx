@@ -1,4 +1,3 @@
-import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { listSignups, searchSignups } from '@/lib/db';
 import Topbar from '@/components/Topbar';
@@ -11,15 +10,6 @@ import { formatRelative } from '@/lib/format';
 import type { Signup } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
-
-async function promoteAction(formData: FormData) {
-  'use server';
-  const id = Number(formData.get('id'));
-  const { promoteSignupToPartner } = await import('@/lib/db');
-  await promoteSignupToPartner(id, {});
-  revalidatePath('/signups');
-  revalidatePath('/partners');
-}
 
 function sourceVariant(source?: string | null): 'default' | 'success' | 'warning' | 'danger' {
   if (!source) return 'default';
@@ -67,20 +57,6 @@ export default async function SignupsPage({
         <span className="text-[13px] text-text-dim tabular-nums">
           {formatRelative(r.created_at)}
         </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      width: '200px',
-      align: 'right' as const,
-      render: (r: Signup) => (
-        <form action={promoteAction} className="flex justify-end">
-          <input type="hidden" name="id" value={(r as any).id} />
-          <Button variant="secondary" size="sm">
-            Promote to partner
-          </Button>
-        </form>
       ),
     },
   ];
