@@ -3,11 +3,10 @@ import Link from 'next/link';
 import {
   LayoutDashboard,
   Users,
-  Briefcase,
   Download,
   MessageSquare,
   BarChart3,
-  FileText,
+  Building2,
   Settings,
 } from 'lucide-react';
 import Logo from './Logo';
@@ -24,12 +23,11 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Overview', href: '/', icon: LayoutDashboard },
+  { label: 'Downloads', href: '/installs', icon: Download },
   { label: 'Signups', href: '/signups', icon: Users },
-  { label: 'Design Partners', href: '/partners', icon: Briefcase },
-  { label: 'Installs', href: '/installs', icon: Download },
   { label: 'Feedback', href: '/feedback', icon: MessageSquare },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { label: 'Content', href: '/content', icon: FileText },
+  { label: 'Enterprise', href: '/enterprise', icon: Building2 },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

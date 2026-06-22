@@ -1,10 +1,10 @@
 import { requireAdmin } from '@/lib/auth';
+import Link from 'next/link';
 import {
   getKpis,
   listSignups,
   listFeedback,
   listInstalls,
-  listPartners,
 } from '@/lib/db';
 import KpiCard from '@/components/KpiCard';
 import Topbar from '@/components/Topbar';
@@ -26,7 +26,6 @@ export default async function OverviewPage() {
   const recentSignups = (await listSignups()).slice(0, 5);
   const recentFeedback = (await listFeedback({ status: 'new' })).slice(0, 5);
   const recentInstalls = await listInstalls(5);
-  const partners = await listPartners();
 
   const timeline: TimelineItem[] = [
     ...recentSignups.map((s: any) => ({
@@ -49,26 +48,6 @@ export default async function OverviewPage() {
   ]
     .sort((a, b) => b.created_at - a.created_at)
     .slice(0, 10);
-
-  const pipelineCounts = partners.reduce<Record<string, number>>((acc, p: any) => {
-    const status = p.status || 'unknown';
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {});
-  const pipelineTotal = Object.values(pipelineCounts).reduce(
-    (a, b) => a + b,
-    0
-  );
-  const pipelineEntries = Object.entries(pipelineCounts);
-
-  const statusColor: Record<string, string> = {
-    lead: 'bg-[var(--text-dim)]',
-    contacted: 'bg-[var(--accent)]',
-    demo_booked: 'bg-amber-400',
-    piloting: 'bg-[var(--accent-2)]',
-    paying: 'bg-[var(--accent-2)]',
-    lost: 'bg-red-500',
-  };
 
   const badgeVariantFor = (kind: TimelineItem['kind']) => {
     if (kind === 'signup') return 'default' as const;
@@ -183,56 +162,19 @@ export default async function OverviewPage() {
 
           <Card>
             <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
-                  Pipeline
-                </h2>
-                <span className="text-xs tabular-nums text-[var(--text-dim)]">
-                  {pipelineTotal} partner{pipelineTotal === 1 ? '' : 's'}
-                </span>
-              </div>
-              {pipelineTotal === 0 ? (
-                <p className="text-sm text-[var(--text-dim)]">
-                  No partners yet.
-                </p>
-              ) : (
-                <>
-                  <div className="flex w-full h-1.5 rounded-full overflow-hidden bg-[var(--border)]">
-                    {pipelineEntries.map(([status, count]) => (
-                      <div
-                        key={status}
-                        className={statusColor[status] || 'bg-[var(--text-dim)]'}
-                        style={{
-                          width: `${(count / pipelineTotal) * 100}%`,
-                        }}
-                        title={`${status}: ${count}`}
-                      />
-                    ))}
-                  </div>
-                  <ul className="mt-4 space-y-1">
-                    {pipelineEntries.map(([status, count]) => (
-                      <li
-                        key={status}
-                        className="flex items-center justify-between py-1 text-sm"
-                      >
-                        <span className="flex items-center gap-2 text-[var(--text)]">
-                          <span
-                            className={`inline-block w-2 h-2 rounded-sm ${
-                              statusColor[status] || 'bg-[var(--text-dim)]'
-                            }`}
-                          />
-                          <span className="capitalize">
-                            {status.replace(/_/g, ' ')}
-                          </span>
-                        </span>
-                        <span className="tabular-nums text-[var(--text-dim)]">
-                          {count}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)] mb-3">
+                Enterprise
+              </h2>
+              <p className="text-sm text-[var(--text-dim)] leading-relaxed">
+                The team gateway: one authenticated MCP endpoint with API keys,
+                usage metering, and shared pack libraries.
+              </p>
+              <Link
+                href="/enterprise"
+                className="mt-4 inline-flex items-center gap-1 text-sm text-[var(--accent)] hover:underline"
+              >
+                Manage teams &amp; keys &rarr;
+              </Link>
             </div>
           </Card>
         </div>
