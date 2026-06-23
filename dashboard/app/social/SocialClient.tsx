@@ -14,7 +14,8 @@ const ALL_PLATFORMS: { id: Platform; label: string }[] = [
   { id: 'instagram', label: 'Instagram' },
 ];
 
-async function trigger(payload: unknown): Promise<{ ok: boolean; error?: string; detail?: string }> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function trigger(payload: unknown): Promise<{ httpOk: boolean; data: any }> {
   try {
     const res = await fetch('/api/social/trigger', {
       method: 'POST',
@@ -22,23 +23,26 @@ async function trigger(payload: unknown): Promise<{ ok: boolean; error?: string;
       body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok) return { ok: true };
-    return { ok: false, error: data?.error || `http_${res.status}`, detail: data?.detail };
+    return { httpOk: res.ok, data };
   } catch (e) {
-    return { ok: false, error: 'network', detail: e instanceof Error ? e.message : '' };
+    return { httpOk: false, data: { error: 'network', detail: e instanceof Error ? e.message : '' } };
   }
 }
 
 function explain(error?: string, detail?: string): string {
   switch (error) {
     case 'n8n_unreachable':
-      return `Could not reach n8n${detail ? ` (${detail})` : ''}. Is n8n running and is the workflow active?`;
+      return `Could not reach n8n${detail ? ` (${detail})` : ''}. Is n8n running, the workflow active, and KARST_N8N_BASE_URL pointed at a reachable URL?`;
+    case 'generation_failed':
+      return `Generation failed${detail ? ` — ${detail}` : ''}. Is ANTHROPIC_API_KEY set on the dashboard?`;
     case 'unauthorized':
       return 'Session expired — reload and sign in again.';
     case 'not_approved':
       return 'Only approved posts can be published.';
+    case 'not_found':
+      return 'Post not found.';
     default:
-      return `Something went wrong${error ? ` (${error})` : ''}.`;
+      return `Something went wrong${error ? ` (${error})` : ''}${detail ? `: ${detail}` : ''}.`;
   }
 }
 
@@ -61,20 +65,23 @@ export function GeneratePanel() {
     }
     setBusy(true);
     setMsg(null);
-    const r = await trigger({ action: 'generate', theme: theme.trim(), platforms: selected });
+    const { httpOk, data } = await trigger({ action: 'generate', theme: theme.trim(), platforms: selected });
     setBusy(false);
-    if (r.ok) {
-      // n8n acks immediately and writes drafts as each platform finishes, so we
-      // can't report a workflow failure here — be honest and point at the log.
-      setMsg({
-        kind: 'ok',
-        text: 'Generation started — drafts appear as they’re written. If none show in ~30s, check the n8n execution log.',
-      });
-      // Refresh a couple of times to pick up drafts as they land.
+    if (httpOk && data.ok && data.via === 'n8n') {
+      // n8n acks immediately; drafts arrive via the ingest webhook as each finishes.
+      setMsg({ kind: 'ok', text: 'Generation started via n8n — drafts appear shortly.' });
       setTimeout(() => startTransition(() => router.refresh()), 4000);
       setTimeout(() => startTransition(() => router.refresh()), 9000);
+    } else if (httpOk && data.ok) {
+      const n = data.created ?? 0;
+      const failed = Array.isArray(data.errors) ? data.errors.length : 0;
+      setMsg({
+        kind: 'ok',
+        text: `Generated ${n} draft${n === 1 ? '' : 's'}${failed ? ` (${failed} platform${failed === 1 ? '' : 's'} failed)` : ''}.`,
+      });
+      startTransition(() => router.refresh());
     } else {
-      setMsg({ kind: 'err', text: explain(r.error, r.detail) });
+      setMsg({ kind: 'err', text: explain(data.error, data.detail) });
     }
   }
 
@@ -139,13 +146,19 @@ export function PublishButton({ id, disabled }: { id: number; disabled?: boolean
   async function onPublish() {
     setBusy(true);
     setMsg(null);
-    const r = await trigger({ action: 'publish', id });
+    const { httpOk, data } = await trigger({ action: 'publish', id });
     setBusy(false);
-    if (r.ok) {
-      setMsg({ kind: 'ok', text: 'Publishing… status will update shortly.' });
-      setTimeout(() => startTransition(() => router.refresh()), 3500);
+    if (httpOk && data.ok && data.via === 'n8n') {
+      setMsg({ kind: 'ok', text: 'Publishing via n8n — status will update shortly.' });
+      setTimeout(() => startTransition(() => router.refresh()), 4000);
+    } else if (httpOk && data.ok && data.status === 'posted') {
+      setMsg({ kind: 'ok', text: 'Posted! ✓' });
+      startTransition(() => router.refresh());
+    } else if (httpOk && data.status === 'failed') {
+      setMsg({ kind: 'err', text: `Publish failed: ${data.detail || 'unknown error'}` });
+      startTransition(() => router.refresh());
     } else {
-      setMsg({ kind: 'err', text: explain(r.error, r.detail) });
+      setMsg({ kind: 'err', text: explain(data.error, data.detail) });
     }
   }
 
