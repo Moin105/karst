@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <rect width="1080" height="1080" fill="#0a0a0f"/>
+  <text x="540" y="200" font-family="'Segoe UI', Inter, sans-serif" font-size="52" font-weight="700" fill="#f8fafc" text-anchor="middle">Tokens per question</text>
+  <text x="540" y="262" font-family="'Segoe UI', Inter, sans-serif" font-size="30" fill="#94a3b8" text-anchor="middle">pack-scoped retrieval, not the whole repo</text>
+
+  <!-- counting number: discrete values toggled by opacity -->
+  <g font-family="'JetBrains Mono', Consolas, monospace" font-size="150" font-weight="700" text-anchor="middle">
+    <text x="540" y="560" fill="#f87171" opacity="0"><animate attributeName="opacity" values="1;0;0;0;0;0;0" keyTimes="0;0.16;0.32;0.48;0.64;0.8;1" dur="4s" repeatCount="indefinite"/>142,000</text>
+    <text x="540" y="560" fill="#f87171" opacity="0"><animate attributeName="opacity" values="0;1;0;0;0;0;0" keyTimes="0;0.16;0.32;0.48;0.64;0.8;1" dur="4s" repeatCount="indefinite"/>118,400</text>
+    <text x="540" y="560" fill="#fbbf24" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0;0;0" keyTimes="0;0.16;0.32;0.48;0.64;0.8;1" dur="4s" repeatCount="indefinite"/>92,100</text>
+    <text x="540" y="560" fill="#fbbf24" opacity="0"><animate attributeName="opacity" values="0;0;0;1;0;0;0" keyTimes="0;0.16;0.32;0.48;0.64;0.8;1" dur="4s" repeatCount="indefinite"/>74,600</text>
+    <text x="540" y="560" fill="#a3e635" opacity="0"><animate attributeName="opacity" values="0;0;0;0;1;0;0" keyTimes="0;0.16;0.32;0.48;0.64;0.8;1" dur="4s" repeatCount="indefinite"/>61,200</text>
+    <text x="540" y="560" fill="#34d399" opacity="0"><animate attributeName="opacity" values="0;0;0;0;0;1;1" keyTimes="0;0.16;0.32;0.48;0.64;0.8;1" dur="4s" repeatCount="indefinite"/>51,000</text>
+  </g>
+  <text x="540" y="630" font-family="'JetBrains Mono', Consolas, monospace" font-size="34" fill="#94a3b8" text-anchor="middle">tokens</text>
+
+  <!-- shrinking bar -->
+  <rect x="190" y="730" width="700" height="46" rx="23" fill="#13131c" stroke="#1f2937" stroke-width="2"/>
+  <rect x="190" y="730" height="46" rx="23" fill="#34d399">
+    <animate attributeName="width" values="700;583;453;367;301;251;251" keyTimes="0;0.16;0.32;0.48;0.64;0.8;1" dur="4s" repeatCount="indefinite"/>
+  </rect>
+  <text x="540" y="900" font-family="'Segoe UI', Inter, sans-serif" font-size="44" font-weight="700" fill="#34d399" text-anchor="middle">~60% fewer tokens</text>
+  <text x="540" y="958" font-family="'Segoe UI', Inter, sans-serif" font-size="28" fill="#94a3b8" text-anchor="middle">lower cost, faster answers, tighter context</text>
+</svg>

@@ -1,0 +1,20 @@
+{
+  "name": "karst-social",
+  "version": "1.0.0",
+  "description": "karst social media kit — generate static cards + animations",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "node generate.mjs && node render.mjs",
+    "generate": "node generate.mjs",
+    "render": "node render.mjs",
+    "animate": "node animated/capture-anim.mjs"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0",
+    "puppeteer-core": "^25.2.0"
+  }
+}
