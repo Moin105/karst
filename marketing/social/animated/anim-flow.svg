@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <rect width="1600" height="900" fill="#0a0a0f"/>
+  <text x="800" y="200" font-family="'Segoe UI', Inter, sans-serif" font-size="58" font-weight="700" fill="#f8fafc" text-anchor="middle">How karst works</text>
+
+  <line x1="430" y1="470" x2="590" y2="470" stroke="#1f2937" stroke-width="4"/>
+  <line x1="430" y1="470" x2="590" y2="470" stroke="#818cf8" stroke-width="4" stroke-dasharray="160" stroke-dashoffset="160">
+    <animate attributeName="stroke-dashoffset" values="160;160;0;0;160" keyTimes="0;0.25;0.4;0.95;1" dur="5s" repeatCount="indefinite"/></line>
+  <line x1="1010" y1="470" x2="1170" y2="470" stroke="#1f2937" stroke-width="4"/>
+  <line x1="1010" y1="470" x2="1170" y2="470" stroke="#818cf8" stroke-width="4" stroke-dasharray="160" stroke-dashoffset="160">
+    <animate attributeName="stroke-dashoffset" values="160;160;160;0;0;160" keyTimes="0;0.5;0.6;0.72;0.95;1" dur="5s" repeatCount="indefinite"/></line>
+
+  <g>
+    <rect x="190" y="380" width="240" height="180" rx="16" fill="#13131c" stroke="#1f2937" stroke-width="2"/>
+    <rect x="190" y="380" width="240" height="180" rx="16" fill="none" stroke="#818cf8" stroke-width="3" opacity="0">
+      <animate attributeName="opacity" values="0;1;1;0.3;0.3;0" keyTimes="0;0.1;0.3;0.4;0.95;1" dur="5s" repeatCount="indefinite"/></rect>
+    <text x="310" y="455" font-family="'Segoe UI',sans-serif" font-size="40" font-weight="600" fill="#f8fafc" text-anchor="middle">index</text>
+    <text x="310" y="500" font-family="'Segoe UI',sans-serif" font-size="24" fill="#94a3b8" text-anchor="middle">parse + embed</text>
+  </g>
+  <g>
+    <rect x="590" y="380" width="420" height="180" rx="16" fill="#13131c" stroke="#1f2937" stroke-width="2"/>
+    <rect x="590" y="380" width="420" height="180" rx="16" fill="none" stroke="#818cf8" stroke-width="3" opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0.3;0.3;0" keyTimes="0;0.4;0.5;0.6;0.7;0.95;1" dur="5s" repeatCount="indefinite"/></rect>
+    <text x="800" y="455" font-family="'Segoe UI',sans-serif" font-size="40" font-weight="600" fill="#f8fafc" text-anchor="middle">pack</text>
+    <text x="800" y="500" font-family="'Segoe UI',sans-serif" font-size="24" fill="#94a3b8" text-anchor="middle">group related code</text>
+  </g>
+  <g>
+    <rect x="1170" y="380" width="240" height="180" rx="16" fill="#13131c" stroke="#1f2937" stroke-width="2"/>
+    <rect x="1170" y="380" width="240" height="180" rx="16" fill="none" stroke="#34d399" stroke-width="3" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.7;0.72;0.82;0.95;1" dur="5s" repeatCount="indefinite"/></rect>
+    <text x="1290" y="455" font-family="'Segoe UI',sans-serif" font-size="40" font-weight="600" fill="#f8fafc" text-anchor="middle">serve</text>
+    <text x="1290" y="500" font-family="'Segoe UI',sans-serif" font-size="24" fill="#34d399" text-anchor="middle">over MCP</text>
+  </g>
+  <text x="800" y="720" font-family="'Segoe UI',sans-serif" font-size="32" fill="#94a3b8" text-anchor="middle">cited, pack-scoped context — 60% fewer tokens</text>
+</svg>

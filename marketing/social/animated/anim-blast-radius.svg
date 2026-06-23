@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <rect width="1080" height="1080" fill="#0a0a0f"/>
+  <text x="540" y="150" font-family="'Segoe UI', Inter, sans-serif" font-size="52" font-weight="700" fill="#f8fafc" text-anchor="middle">Know the blast radius</text>
+  <text x="540" y="210" font-family="'Segoe UI', Inter, sans-serif" font-size="30" fill="#94a3b8" text-anchor="middle">before you change a line</text>
+
+  <!-- edges drawing out from center -->
+  <g stroke-width="4" fill="none">
+    <line x1="540" y1="560" x2="300" y2="380" stroke="#818cf8" stroke-dasharray="300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;300;0;0;300" keyTimes="0;0.25;0.45;0.92;1" dur="5s" repeatCount="indefinite"/></line>
+    <line x1="540" y1="560" x2="800" y2="380" stroke="#818cf8" stroke-dasharray="300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;300;0;0;300" keyTimes="0;0.3;0.5;0.92;1" dur="5s" repeatCount="indefinite"/></line>
+    <line x1="540" y1="560" x2="250" y2="640" stroke="#818cf8" stroke-dasharray="300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;300;0;0;300" keyTimes="0;0.35;0.55;0.92;1" dur="5s" repeatCount="indefinite"/></line>
+    <line x1="540" y1="560" x2="850" y2="660" stroke="#818cf8" stroke-dasharray="320" stroke-dashoffset="320"><animate attributeName="stroke-dashoffset" values="320;320;0;0;320" keyTimes="0;0.4;0.6;0.92;1" dur="5s" repeatCount="indefinite"/></line>
+    <line x1="540" y1="560" x2="540" y2="840" stroke="#818cf8" stroke-dasharray="290" stroke-dashoffset="290"><animate attributeName="stroke-dashoffset" values="290;290;0;0;290" keyTimes="0;0.45;0.65;0.92;1" dur="5s" repeatCount="indefinite"/></line>
+  </g>
+
+  <!-- neighbor nodes appear after their edge -->
+  <g font-family="'JetBrains Mono', Consolas, monospace" font-size="22" text-anchor="middle">
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.45;0.5;0.92;1" dur="5s" repeatCount="indefinite"/>
+      <rect x="216" y="352" width="168" height="56" rx="12" fill="#13131c" stroke="#374151" stroke-width="2"/><text x="300" y="387" fill="#cbd5e1">auth.py</text></g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.5;0.55;0.92;1" dur="5s" repeatCount="indefinite"/>
+      <rect x="716" y="352" width="168" height="56" rx="12" fill="#13131c" stroke="#374151" stroke-width="2"/><text x="800" y="387" fill="#cbd5e1">session.py</text></g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.55;0.6;0.92;1" dur="5s" repeatCount="indefinite"/>
+      <rect x="166" y="612" width="168" height="56" rx="12" fill="#13131c" stroke="#374151" stroke-width="2"/><text x="250" y="647" fill="#cbd5e1">api.py</text></g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.6;0.65;0.92;1" dur="5s" repeatCount="indefinite"/>
+      <rect x="766" y="632" width="168" height="56" rx="12" fill="#13131c" stroke="#374151" stroke-width="2"/><text x="850" y="667" fill="#cbd5e1">login.tsx</text></g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.65;0.7;0.92;1" dur="5s" repeatCount="indefinite"/>
+      <rect x="456" y="812" width="168" height="56" rx="12" fill="#13131c" stroke="#374151" stroke-width="2"/><text x="540" y="847" fill="#cbd5e1">tests/</text></g>
+  </g>
+
+  <!-- center node pulses -->
+  <circle cx="540" cy="560" r="70" fill="#818cf8" opacity="0.15"><animate attributeName="r" values="70;92;70" dur="2.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.18;0;0.18" dur="2.5s" repeatCount="indefinite"/></circle>
+  <circle cx="540" cy="560" r="58" fill="#1e1b4b" stroke="#818cf8" stroke-width="4"/>
+  <text x="540" y="552" font-family="'JetBrains Mono', Consolas, monospace" font-size="22" font-weight="700" fill="#c7d2fe" text-anchor="middle">User</text>
+  <text x="540" y="580" font-family="'JetBrains Mono', Consolas, monospace" font-size="18" fill="#818cf8" text-anchor="middle">.model</text>
+
+  <text x="540" y="990" font-family="'Segoe UI', Inter, sans-serif" font-size="30" fill="#94a3b8" text-anchor="middle">karst impact — call &amp; import graph, not guesswork</text>
+</svg>

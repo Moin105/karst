@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080"><rect width="1080" height="1080" fill="#0a0a0f"/><circle cx="540" cy="194.4" r="669.6" fill="#818cf8" opacity="0.06"/><g transform="translate(59.4 67.60799999999999) scale(1.1812500000000001)">
+    <path d="M26 55L21 62M38 55L43 62" fill="none" stroke="#3a2a18" stroke-width="5" stroke-linecap="round"/>
+    <path d="M22 36L12 24L8 13M42 36L52 24L56 13" fill="none" stroke="#3a2a18" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M22 36L12 24L8 13M42 36L52 24L56 13" fill="none" stroke="#b9895c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="32,28 18,38 24,56 32,52" fill="#b9895c"/>
+    <polygon points="32,28 46,38 40,56 32,52" fill="#8f6840"/>
+    <polygon points="24,33 32,28 40,33 32,38" fill="#cca57a"/>
+    <polygon points="32,28 46,38 40,56 24,56 18,38" fill="none" stroke="#3a2a18" stroke-width="1.2" stroke-linejoin="round"/>
+    <circle cx="32" cy="42" r="2.7" fill="#34d399"/>
+  </g><text x="153.9" y="129.6" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="75.60000000000001" font-weight="600" fill="#f8fafc">karst</text><text x="540" y="680.4" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="388.8" font-weight="700" fill="#34d399" text-anchor="middle">60%</text><text x="540" y="831.6" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="64.8" font-weight="600" fill="#f8fafc" text-anchor="middle">fewer tokens</text><text x="540" y="923.4" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="45.36" fill="#94a3b8" text-anchor="middle">vs dumping raw files into the model</text></svg>
