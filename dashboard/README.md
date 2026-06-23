@@ -2,157 +2,102 @@
 
 ## Overview
 
-This is the private control panel for karst. Manage waitlist signups, design-partner CRM, MCP install tracking, feedback inbox, content, analytics. Built in Next.js 15 + Tailwind + better-sqlite3.
+This is the private control panel for karst. Manage waitlist signups, design-partner CRM, MCP install tracking, feedback inbox, content, and analytics. Built in Next.js 15 + Tailwind + Postgres (`pg`), deployed serverless on Vercel.
 
 Not intended for public access — protect behind iron-session auth and a single admin user provisioned via environment variables.
 
 ## Architecture
 
-- **Storage**: SQLite file at `./karst.db` (zero infra). All tables live in a single file — waitlist, design partners, install events, query events, feedback.
-- **Auth**: iron-session cookie auth, single admin user from env. No registration flow.
-- **Runtime**: Next.js 15 App Router, server actions + a few `/api/*` routes for CLI ingest.
-- **Deployment target**: long-lived host with a persistent disk (Fly.io / Railway / VPS). Vercel needs a Postgres swap because SQLite can't share state across serverless invocations.
+- **Storage**: Neon (managed PostgreSQL), reached over `DATABASE_URL` via a `pg` connection pool in [`lib/db.ts`](lib/db.ts). Tables: signups, design partners, installs, queries, feedback, blog posts, admin users, password resets.
+- **Auth**: iron-session cookie auth, single admin user seeded from env. No registration flow; password can be self-reset (the new hash is then stored in the DB and takes precedence over the env value).
+- **Runtime**: Next.js 15 App Router — server actions for the admin UI, plus a few `/api/*` routes for CLI ingest and the public landing forms.
+- **Deployment**: Vercel serverless. SQLite was used in an earlier iteration but is gone — serverless functions can't share a SQLite file across invocations, so the store is managed Postgres.
 
 ## Tech stack
 
-- Next.js 15 (App Router, Server Components)
-- React 18
+- Next.js 15 (App Router, Server Components) + React 19
 - TypeScript
 - Tailwind CSS
-- better-sqlite3 (synchronous, embedded)
+- `pg` (node-postgres)
 - iron-session (cookie sessions)
 - Zod (request validation)
 - Recharts (analytics views)
+- Nodemailer (transactional email)
 
 ## Local dev quickstart
 
 ```bash
 # 1. Install deps
-pnpm install   # or: npm install
+npm install
 
-# 2. Copy env template and fill in values
-cp .env.example .env
+# 2. Copy env template (db:migrate / db:seed read .env.local)
+cp .env.example .env.local
 
-# 3. Generate admin password hash (paste into KARST_ADMIN_PASSWORD_HASH)
-node -e "const c=require('node:crypto');const salt=c.randomBytes(16).toString('hex');const hash=c.scryptSync(process.argv[1],salt,64).toString('hex');console.log(salt+':'+hash)" 'your-password-here'
+# 3. Set DATABASE_URL in .env.local
+#    Local Postgres:  postgres://user:pass@localhost:5432/karst
+#    Neon (pooled):   postgres://<user>:<pass>@<host>-pooler.<region>.aws.neon.tech/<db>?sslmode=require
 
-# 4. Generate session secret (paste into KARST_SESSION_SECRET)
+# 4. Generate admin password hash → paste into KARST_ADMIN_PASSWORD_HASH
+npm run hash-password
+
+# 5. Generate session secret → paste into KARST_SESSION_SECRET
 openssl rand -hex 32
 
-# 5. (Optional) seed dev data
-pnpm db:seed
+# 6. Apply the schema
+npm run db:migrate
 
-# 6. Run dev server
-pnpm dev   # -> http://localhost:3001
+# 7. (Optional) seed dev data
+npm run db:seed
+
+# 8. Run dev server
+npm run dev   # -> http://localhost:3001
 ```
 
 ## Env vars
 
+Canonical list lives in [`.env.example`](.env.example).
+
 | Variable | Required | Description |
 |---|---|---|
-| `KARST_SESSION_SECRET` | yes | 32-byte hex string for iron-session cookie encryption. |
+| `DATABASE_URL` | yes | PostgreSQL connection string (Neon pooled string in prod). SSL is enabled automatically for non-local hosts. |
+| `KARST_SESSION_SECRET` | yes | 32-byte (min) secret for iron-session cookie encryption. |
 | `KARST_ADMIN_EMAIL` | yes | Email used to log in. |
-| `KARST_ADMIN_PASSWORD_HASH` | yes | `salt:hash` from the scrypt one-liner above. |
-| `KARST_DATABASE_PATH` | no | Path to SQLite file. Defaults to `./karst.db`. Set to `/app/data/karst.db` on Fly. |
-| `KARST_INGEST_TOKEN` | no | Optional shared secret required on `/api/ingest/*` from the CLI. |
-| `NODE_ENV` | no | `production` in prod. |
-| `PORT` | no | Defaults to `3001`. |
+| `KARST_ADMIN_PASSWORD_HASH` | yes | `scrypt:N=...:salt:hash` from `npm run hash-password`. |
+| `KARST_ALLOWED_ORIGINS` | yes | CORS allowlist for the public landing forms (waitlist + feedback). Comma-separated exact origins, no wildcard — must include the live landing URL. |
+| `KARST_PUBLIC_URL` | no | Public origin of this dashboard, used to build safe password-reset links. Optional on Vercel (`VERCEL_URL` is auto-injected); required on non-Vercel hosts or reset emails won't send. |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `EMAIL_FROM` | no | SMTP via Nodemailer. Leave empty to disable email (signups still work). |
+| `EMAIL_REPLY_TO` / `OWNER_NOTIFY_EMAIL` | no | Optional reply-to and owner-notification addresses. |
 
-## Deploy options
+## Deploy (Vercel + Neon Postgres)
 
-| Option | Cost | Notes |
-|---|---|---|
-| **Fly.io (recommended)** | ~$3–5/mo | SQLite + persistent volume, one-region. Cheapest path with no DB rewrite. Sample `fly.toml` snippet below. |
-| **Railway** | ~$5/mo | Simpler UX than Fly. Volume mount works the same. Steps below. |
-| **Vercel (Pro $20/mo)** | $20/mo | Private repo support, but SQLite does **not** work on serverless. Requires Postgres swap (see plan below). |
-| **Self-hosted VPS** | $4–6/mo (Hetzner/DO) | Most control. `docker-compose up -d` with a named volume. |
+The canonical end-to-end walkthrough is in [`docs/DEPLOY.md`](../docs/DEPLOY.md) §4. In short:
 
-### Fly.io snippet (see full `fly.toml` in repo root)
-
-```toml
-app = "karst-dashboard"
-primary_region = "iad"
-
-[build]
-  dockerfile = "Dockerfile"
-
-[env]
-  NODE_ENV = "production"
-  KARST_DATABASE_PATH = "/app/data/karst.db"
-
-[[mounts]]
-  source = "karst_data"
-  destination = "/app/data"
-
-[http_service]
-  internal_port = 3001
-  auto_stop_machines = true
-  auto_start_machines = true
-  min_machines_running = 0
-```
-
-### Railway steps
-
-1. `railway login`
-2. `railway init` from the `dashboard/` directory.
-3. Add a Volume in the dashboard UI, mount at `/app/data`.
-4. Set env vars in the Railway dashboard (same list as above, with `KARST_DATABASE_PATH=/app/data/karst.db`).
-5. `railway up` — Railway autodetects the Dockerfile.
-6. Add custom domain `admin.karst.dev` and follow the CNAME instructions.
-
-### Vercel swap plan (only if you insist on Vercel)
-
-SQLite cannot persist across serverless invocations. To deploy on Vercel:
-
-1. Provision Vercel Postgres (or Neon / Supabase Postgres).
-2. Replace `better-sqlite3` with `postgres` (or `drizzle-orm` + `pg`).
-3. Port `lib/db.ts` queries — most are `prepare()` + `run/get/all`, which map 1:1 to parameterized SQL.
-4. Migrate schema with a one-shot `schema.sql` applied via `psql`.
-5. Set `DATABASE_URL` in Vercel project env.
-6. Drop the volume code paths — Postgres is the source of truth.
-
-This is a real port, not a config flip. The Fly.io path avoids all of it.
-
-### Self-hosted VPS
-
-```yaml
-# docker-compose.yml
-services:
-  dashboard:
-    build: .
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3001:3001"
-    env_file: .env
-    volumes:
-      - karst_data:/app/data
-volumes:
-  karst_data:
-```
-
-Put nginx / Caddy in front for TLS.
+1. **Provision Neon.** Create a project at <https://neon.tech> and copy the **pooled** connection string (`...-pooler...?sslmode=require`).
+2. **Apply the schema once** against the Neon database before serving traffic:
+   ```bash
+   DATABASE_URL='postgres://...neon.tech/...?sslmode=require' npm run db:migrate
+   ```
+   (The runtime in `lib/db.ts` also bootstraps the schema with `CREATE ... IF NOT EXISTS` on cold start, but migrating once avoids concurrent-DDL races across serverless instances.)
+3. **Import the repo into Vercel** with the project root set to `dashboard/`.
+4. **Set the env vars** above in the Vercel project settings. `DATABASE_URL` is the Neon pooled string; include the live landing origin(s) in `KARST_ALLOWED_ORIGINS`.
+5. **Deploy.** Verify with the health check:
+   ```bash
+   curl https://<your-deployment>.vercel.app/api/health
+   # -> {"ok":true,"db":"postgres","schema_ready":true}
+   ```
 
 ## How the CLI phones home
 
-The `karst` CLI reads `KARST_INGEST_URL` from the user's environment and POSTs anonymized events to `/api/ingest/*` on each command:
+The `karst` CLI reads `KARST_INGEST_URL` from the user's environment and POSTs anonymized events to the dashboard:
 
-- `/api/ingest/install` — first run on a machine. Sends an anonymous install id + OS/arch.
-- `/api/ingest/query` — per command. Sends query type, latency, success/failure, model used. **No source code, no file paths, no prompt content.**
-- `/api/ingest/error` — opt-in crash reports.
+- `/api/ingest/install` — first run on a machine. Sends an anonymous install id + version/OS.
+- `/api/ingest/query` — per command. Sends repo size, tokens, cost, pack usage. **No source code, no file paths, no prompt content.**
+- `/api/ingest/feedback` — feedback submitted from the CLI/MCP.
 
-Default endpoint: `https://admin.karst.dev`.
+The public landing waitlist posts to `/api/waitlist`. The production instance currently lives at its `*.vercel.app` URL (a custom `admin.karst.dev` domain will front it once DNS is wired).
 
 Opt-out: users set `KARST_TELEMETRY=0` and the CLI skips all ingest calls.
 
 ## Backup
 
-Snapshot `karst.db` to S3 nightly. SQLite's `.backup` is safe while the app is running — it uses the WAL.
-
-```bash
-# /etc/cron.d/karst-backup
-0 3 * * *  root  sqlite3 /app/data/karst.db ".backup '/tmp/karst-$(date +\%F).db'" && \
-           aws s3 cp /tmp/karst-$(date +\%F).db s3://karst-backups/ && \
-           rm /tmp/karst-$(date +\%F).db
-```
-
-On Fly, run this from a scheduled Machine or a small companion container with the AWS CLI installed.
+Neon provides automated backups and point-in-time restore — no manual backup cron is needed.

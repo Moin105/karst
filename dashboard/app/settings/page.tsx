@@ -74,11 +74,6 @@ const FLAG_KEYS: { key: string; defaultValue: string; description: string }[] = 
     description: 'Public URL the CLI posts telemetry/feedback to',
   },
   {
-    key: 'KARST_DATABASE_PATH',
-    defaultValue: './karst.db',
-    description: 'SQLite database path on the server',
-  },
-  {
     key: 'KARST_ADMIN_EMAIL',
     defaultValue: '(unset)',
     description: 'Admin email allowed to log in',
