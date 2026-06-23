@@ -73,6 +73,9 @@ Each card is named `NN-topic-RATIO`. The ratio tells you where it fits best.
 | `anim-token-counter` | 1:1 | 4s | The 60%-fewer-tokens hook |
 | `anim-blast-radius` | 1:1 | 5s | Impact analysis differentiator |
 | `anim-terminal` | 16:9 | 6s | Ask → cited answer demo |
+| `ent-gateway` | 16:9 | 3.6s | Enterprise: one governed endpoint for the org |
+| `ent-isolation` | 16:9 | 4s | Enterprise: per-team repo isolation (allowed vs 403) |
+| `ent-onprem` | 1:1 | 4s | Enterprise: code never leaves the perimeter |
 
 Each exports to a looping **GIF** (silent, universal — works in feeds, Reddit/Discord
 embeds, GitHub READMEs). Convert to MP4 with the ffmpeg one-liner above where you want

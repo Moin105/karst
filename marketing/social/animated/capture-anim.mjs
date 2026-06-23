@@ -26,6 +26,9 @@ const SPEC = {
   'anim-token-counter': { dur: 4, max: 640 },
   'anim-blast-radius': { dur: 5, max: 640 },
   'anim-terminal': { dur: 6, max: 800 },
+  'ent-isolation': { dur: 4, max: 800 },
+  'ent-gateway': { dur: 3.6, max: 800 },
+  'ent-onprem': { dur: 4, max: 640 },
 };
 
 function findChrome() {

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <rect width="1080" height="1080" fill="#0a0a0f"/>
+  <text x="540" y="120" font-family="'Segoe UI', Inter, sans-serif" font-size="52" font-weight="700" fill="#f8fafc" text-anchor="middle">Your code never leaves</text>
+  <text x="540" y="178" font-family="'Segoe UI', Inter, sans-serif" font-size="52" font-weight="700" fill="#f8fafc" text-anchor="middle">the perimeter</text>
+
+  <!-- perimeter boundary -->
+  <rect x="150" y="260" width="780" height="560" rx="24" fill="none" stroke="#34d399" stroke-width="3" stroke-dasharray="14 10">
+    <animate attributeName="stroke-dashoffset" values="0;-48" dur="2.4s" repeatCount="indefinite"/>
+  </rect>
+  <text x="540" y="300" font-family="'JetBrains Mono', Consolas, monospace" font-size="20" fill="#34d399" text-anchor="middle">your network · air-gapped</text>
+
+  <!-- inside: gateway + repos + tools -->
+  <rect x="420" y="360" width="240" height="110" rx="14" fill="#0f1117" stroke="#818cf8" stroke-width="2"/>
+  <text x="540" y="408" font-family="'Segoe UI',sans-serif" font-size="26" font-weight="600" fill="#f8fafc" text-anchor="middle">gateway</text>
+  <text x="540" y="440" font-family="'JetBrains Mono',monospace" font-size="15" fill="#94a3b8" text-anchor="middle">+ local LLM</text>
+
+  <g font-family="'JetBrains Mono',monospace" font-size="18" text-anchor="middle" fill="#cbd5e1">
+    <rect x="220" y="560" width="180" height="58" rx="10" fill="#0c1322" stroke="#1e293b" stroke-width="2"/><text x="310" y="596">repos</text>
+    <rect x="450" y="560" width="180" height="58" rx="10" fill="#0c1322" stroke="#1e293b" stroke-width="2"/><text x="540" y="596">index</text>
+    <rect x="680" y="560" width="180" height="58" rx="10" fill="#0c1322" stroke="#1e293b" stroke-width="2"/><text x="770" y="596">AI tools</text>
+  </g>
+  <line x1="540" y1="470" x2="310" y2="560" stroke="#334155" stroke-width="2"/>
+  <line x1="540" y1="470" x2="540" y2="560" stroke="#334155" stroke-width="2"/>
+  <line x1="540" y1="470" x2="770" y2="560" stroke="#334155" stroke-width="2"/>
+
+  <!-- internal request loop dot -->
+  <circle r="7" fill="#34d399"><animateMotion path="M540 470 L770 560 L540 470 L310 560 L540 470" dur="4s" repeatCount="indefinite"/></circle>
+
+  <!-- escape attempt blocked at the boundary -->
+  <line x1="660" y1="700" x2="900" y2="760" stroke="#7f1d1d" stroke-width="3" stroke-dasharray="8 6"/>
+  <circle r="9" fill="#f87171"><animateMotion path="M660 700 L880 754" dur="3s" keyPoints="0;0.55;0.55" keyTimes="0;0.55;1" calcMode="linear" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.1;0.55;0.6;1" dur="3s" repeatCount="indefinite"/></circle>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.55;0.6;0.92;1" dur="3s" repeatCount="indefinite"/>
+    <circle cx="900" cy="760" r="26" fill="#450a0a" stroke="#f87171" stroke-width="2"/>
+    <path d="M891 760a9 9 0 0 1 18 0M888 760h24v14h-24z" fill="none" stroke="#f87171" stroke-width="2.5"/>
+  </g>
+
+  <text x="540" y="900" font-family="'Segoe UI',sans-serif" font-size="30" fill="#f8fafc" text-anchor="middle" font-weight="600">No egress · no telemetry · auditable</text>
+  <text x="540" y="948" font-family="'Segoe UI',sans-serif" font-size="24" fill="#94a3b8" text-anchor="middle">open-source, so your security team can read every line</text>
+</svg>
