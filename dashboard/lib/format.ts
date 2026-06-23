@@ -94,8 +94,32 @@ export function statusColor(s: string | null | undefined): 'default' | 'success'
       return 'warning';
     case 'published':
       return 'success';
+    // social statuses
+    case 'approved':
+      return 'success';
+    case 'posted':
+      return 'success';
+    case 'rejected':
+      return 'default';
+    case 'failed':
+      return 'danger';
     default:
       return 'default';
+  }
+}
+
+export function platformLabel(p: string | null | undefined): string {
+  switch (p) {
+    case 'x':
+      return 'X';
+    case 'reddit':
+      return 'Reddit';
+    case 'discord':
+      return 'Discord';
+    case 'instagram':
+      return 'Instagram';
+    default:
+      return p ?? '—';
   }
 }
 

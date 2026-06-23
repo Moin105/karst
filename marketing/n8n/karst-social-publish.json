@@ -1,0 +1,515 @@
+{
+  "name": "karst — social: publish approved",
+  "nodes": [
+    {
+      "id": "node_1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "karst-social-publish",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "karst-social-publish"
+    },
+    {
+      "id": "node_2",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ===== EDIT THIS LINE =====\nconst DASHBOARD_URL = 'http://localhost:3001'; // your dashboard origin\n// ==========================\nconst p = $input.first().json;\nconst body = p.body ?? p;\nreturn { json: { ...body, dashboard_url: DASHBOARD_URL } };"
+      }
+    },
+    {
+      "id": "node_3",
+      "name": "Route by platform",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        440,
+        400
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "discord",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "outputKey": "discord"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "x",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "outputKey": "x"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "reddit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "outputKey": "reddit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "instagram",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "outputKey": "instagram"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "node_4",
+      "name": "Discord webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/REPLACE_WITH_YOUR_WEBHOOK",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: ($json.body || '').slice(0, 1900) }) }}",
+        "options": {}
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "node_5",
+      "name": "X / Twitter post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twitter.com/2/tweets",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: ($json.body || '').slice(0, 280) }) }}",
+        "options": {},
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twitterOAuth2Api"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "node_6",
+      "name": "Reddit submit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        480
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://oauth.reddit.com/api/submit",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "redditOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "karst-social/1.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "sr",
+              "value": "={{ ($json.target || '').replace(/^\\/?r\\//, '') }}"
+            },
+            {
+              "name": "kind",
+              "value": "self"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.title || ($json.body || '').split('\\n')[0].slice(0, 290) }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.body }}"
+            },
+            {
+              "name": "api_type",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "node_7",
+      "name": "Instagram media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        660
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/me/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ image_url: $json.media_hint, caption: ($json.body || '') + ($json.hashtags ? '\\n\\n' + $json.hashtags : '') }) }}",
+        "options": {},
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "node_8",
+      "name": "Mark posted",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const cfg = $('Config').item.json;\nconst p = cfg.platform;\nconst r = $json || {};\nlet url = null;\nif (p === 'x') url = r.data && r.data.id ? 'https://x.com/i/web/status/' + r.data.id : null;\nelse if (p === 'reddit') url = (r.json && r.json.data && (r.json.data.url || (r.json.data.things && r.json.data.things[0] && r.json.data.things[0].data && r.json.data.things[0].data.url))) || null;\nelse if (p === 'instagram') url = 'https://www.instagram.com/';\nreturn { json: { id: cfg.id, status: 'posted', external_url: url, dashboard_url: cfg.dashboard_url } };"
+      }
+    },
+    {
+      "id": "node_9",
+      "name": "Mark failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        560
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const cfg = $('Config').item.json;\nconst r = $json || {};\nconst err = (r.error && (r.error.message || JSON.stringify(r.error))) || r.message || JSON.stringify(r).slice(0, 800);\nreturn { json: { id: cfg.id, status: 'failed', error: String(err).slice(0, 1800), dashboard_url: cfg.dashboard_url } };"
+      }
+    },
+    {
+      "id": "node_10",
+      "name": "Callback: posted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        320
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.dashboard_url }}/api/ingest/social/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: $json.id, status: 'posted', external_url: $json.external_url }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      }
+    },
+    {
+      "id": "node_11",
+      "name": "Callback: failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        560
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.dashboard_url }}/api/ingest/social/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: $json.id, status: 'failed', error: $json.error }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Route by platform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by platform": {
+      "main": [
+        [
+          {
+            "node": "Discord webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "X / Twitter post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reddit submit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Instagram media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord webhook": {
+      "main": [
+        [
+          {
+            "node": "Mark posted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "X / Twitter post": {
+      "main": [
+        [
+          {
+            "node": "Mark posted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit submit": {
+      "main": [
+        [
+          {
+            "node": "Mark posted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram media": {
+      "main": [
+        [
+          {
+            "node": "Mark posted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark posted": {
+      "main": [
+        [
+          {
+            "node": "Callback: posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark failed": {
+      "main": [
+        [
+          {
+            "node": "Callback: failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

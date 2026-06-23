@@ -78,6 +78,40 @@ export type BlogPost = {
   created_at: number;
 };
 
+// ---------- Social ----------
+// The 4 channels karst publishes to. Generation + publishing run in n8n; the
+// dashboard owns the review queue (draft → approved/rejected → posted/failed)
+// and the non-secret per-channel config (handle, target). API secrets/webhooks
+// live in n8n credentials, never here.
+export type SocialPlatform = 'x' | 'reddit' | 'discord' | 'instagram';
+export type SocialStatus = 'draft' | 'approved' | 'rejected' | 'posted' | 'failed';
+
+export type SocialPost = {
+  id: number;
+  platform: SocialPlatform;
+  theme: string | null;       // the seed idea/theme the draft was generated from
+  title: string | null;       // Reddit post title (optional for the others)
+  body: string;               // the post text
+  hashtags: string | null;    // mainly Instagram / X
+  link: string | null;        // url to include (e.g. https://karst.dev)
+  media_hint: string | null;  // suggested image asset for Instagram
+  status: SocialStatus;
+  external_url: string | null; // url of the live post once published
+  error: string | null;        // publish failure detail
+  created_at: number;
+  updated_at: number;
+};
+
+export type SocialAccount = {
+  platform: SocialPlatform;
+  handle: string | null;       // @karst, u/karst, server name, @karst
+  profile_url: string | null;
+  target: string | null;       // routing hint: subreddit / discord channel (non-secret)
+  enabled: number;             // 1 = a valid generation/publish target
+  notes: string | null;
+  updated_at: number;
+};
+
 // ---------- Postgres (Neon) ----------
 // Local dev:   DATABASE_URL=postgres://user:pass@localhost:5432/karst  (no SSL)
 // Production:  DATABASE_URL=postgres://...neon.tech/...?sslmode=require (Neon
@@ -163,6 +197,32 @@ const SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_queries_created ON queries(created_at);
   CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug);
   ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS session_epoch BIGINT;
+  CREATE TABLE IF NOT EXISTS social_posts (
+    id BIGSERIAL PRIMARY KEY,
+    platform TEXT NOT NULL CHECK(platform IN ('x','reddit','discord','instagram')),
+    theme TEXT,
+    title TEXT,
+    body TEXT NOT NULL,
+    hashtags TEXT,
+    link TEXT,
+    media_hint TEXT,
+    status TEXT NOT NULL CHECK(status IN ('draft','approved','rejected','posted','failed')) DEFAULT 'draft',
+    external_url TEXT,
+    error TEXT,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS social_accounts (
+    platform TEXT PRIMARY KEY CHECK(platform IN ('x','reddit','discord','instagram')),
+    handle TEXT,
+    profile_url TEXT,
+    target TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    notes TEXT,
+    updated_at BIGINT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(status, created_at);
+  CREATE INDEX IF NOT EXISTS idx_social_posts_platform ON social_posts(platform, created_at);
 `;
 
 let _pool: pg.Pool | null = null;
@@ -602,6 +662,127 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
   const db = await getClient();
   const r = await db.execute({ sql: `SELECT * FROM blog_posts WHERE slug = ?`, args: [slug] });
   return first<BlogPost>(r);
+}
+
+// ---------- Social ----------
+export async function insertSocialPost(input: {
+  platform: SocialPlatform;
+  body: string;
+  theme?: string | null;
+  title?: string | null;
+  hashtags?: string | null;
+  link?: string | null;
+  media_hint?: string | null;
+}): Promise<SocialPost> {
+  const db = await getClient();
+  const ts = now();
+  const r = await db.execute({
+    sql: `INSERT INTO social_posts
+            (platform, theme, title, body, hashtags, link, media_hint, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?) RETURNING *`,
+    args: [
+      input.platform,
+      input.theme ?? null,
+      input.title ?? null,
+      input.body,
+      input.hashtags ?? null,
+      input.link ?? null,
+      input.media_hint ?? null,
+      ts,
+      ts,
+    ],
+  });
+  return first<SocialPost>(r)!;
+}
+
+export async function listSocialPosts(filters?: {
+  platform?: SocialPlatform;
+  status?: SocialStatus;
+}): Promise<SocialPost[]> {
+  const where: string[] = [];
+  const vals: SqlArgs = [];
+  if (filters?.platform) { where.push('platform = ?'); vals.push(filters.platform); }
+  if (filters?.status) { where.push('status = ?'); vals.push(filters.status); }
+  const sql =
+    `SELECT * FROM social_posts` +
+    (where.length ? ` WHERE ${where.join(' AND ')}` : '') +
+    ` ORDER BY created_at DESC`;
+  const db = await getClient();
+  const r = await db.execute({ sql, args: vals });
+  return rows<SocialPost>(r);
+}
+
+export async function getSocialPost(id: number): Promise<SocialPost | null> {
+  const db = await getClient();
+  const r = await db.execute({ sql: `SELECT * FROM social_posts WHERE id = ?`, args: [id] });
+  return first<SocialPost>(r);
+}
+
+export async function updateSocialPost(
+  id: number,
+  patch: Partial<SocialPost>
+): Promise<SocialPost | null> {
+  // platform + timestamps are never client-set; updated_at is always bumped.
+  const allowed: (keyof SocialPost)[] = [
+    'status', 'theme', 'title', 'body', 'hashtags', 'link', 'media_hint', 'external_url', 'error',
+  ];
+  const sets: string[] = [];
+  const vals: SqlArgs = [];
+  for (const k of allowed) {
+    if (k in patch) {
+      sets.push(`${k} = ?`);
+      vals.push((patch as Record<string, unknown>)[k] ?? null);
+    }
+  }
+  if (sets.length === 0) return getSocialPost(id);
+  sets.push('updated_at = ?');
+  vals.push(now());
+  vals.push(id);
+  const db = await getClient();
+  const r = await db.execute({
+    sql: `UPDATE social_posts SET ${sets.join(', ')} WHERE id = ? RETURNING *`,
+    args: vals,
+  });
+  return first<SocialPost>(r);
+}
+
+export async function listSocialAccounts(): Promise<SocialAccount[]> {
+  const db = await getClient();
+  const r = await db.execute(`SELECT * FROM social_accounts ORDER BY platform ASC`);
+  return rows<SocialAccount>(r);
+}
+
+export async function upsertSocialAccount(input: {
+  platform: SocialPlatform;
+  handle?: string | null;
+  profile_url?: string | null;
+  target?: string | null;
+  enabled?: boolean;
+  notes?: string | null;
+}): Promise<SocialAccount> {
+  const db = await getClient();
+  const r = await db.execute({
+    sql: `INSERT INTO social_accounts (platform, handle, profile_url, target, enabled, notes, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(platform) DO UPDATE SET
+            handle = excluded.handle,
+            profile_url = excluded.profile_url,
+            target = excluded.target,
+            enabled = excluded.enabled,
+            notes = excluded.notes,
+            updated_at = excluded.updated_at
+          RETURNING *`,
+    args: [
+      input.platform,
+      input.handle ?? null,
+      input.profile_url ?? null,
+      input.target ?? null,
+      input.enabled === false ? 0 : 1,
+      input.notes ?? null,
+      now(),
+    ],
+  });
+  return first<SocialAccount>(r)!;
 }
 
 // ---------- KPIs ----------

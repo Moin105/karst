@@ -1,0 +1,163 @@
+{
+  "name": "karst — social: generate drafts",
+  "nodes": [
+    {
+      "id": "node_1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "karst-social-generate",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "karst-social-generate"
+    },
+    {
+      "id": "node_2",
+      "name": "Build jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ===== EDIT THESE TWO LINES =====\nconst DASHBOARD_URL = 'http://localhost:3001'; // your dashboard origin\nconst MODEL = 'claude-sonnet-4-6';\n// ================================\n\nconst inJson = $input.first().json;\nconst payload = inJson.body ?? inJson; // webhook wraps POST body under .body\nconst theme = (payload.theme || '').toString();\nconst platforms = Array.isArray(payload.platforms) && payload.platforms.length\n  ? payload.platforms\n  : ['x', 'reddit', 'discord', 'instagram'];\n\nconst BRAND =\n  \"karst gives any AI coding agent (Claude, Cursor) a local map of a codebase: \" +\n  \"cited answers plus blast-radius impact analysis (what a change breaks). It runs \" +\n  \"100% locally over MCP, is pack-scoped for ~60% fewer tokens, and now prints the \" +\n  \"exact per-model token cost of every answer. Tone: technical, confident, no hype, \" +\n  \"developer-to-developer. Never invent metrics.\";\n\nconst GUIDE = {\n  x: 'One tweet, <= 270 characters. Strong first-line hook, then the point, then the link. At most 2 hashtags.',\n  reddit: 'A Reddit self-post for a dev subreddit: a concise \"title\" and a helpful, non-salesy \"body\" (3-6 sentences). No marketing voice; share it like a useful tool you built.',\n  discord: 'A short Discord community/changelog message (2-4 sentences). Friendly, emoji OK, like posting in your own server.',\n  instagram: 'An Instagram caption (2-4 short lines) plus a \"hashtags\" string of 5-10 relevant tags. Set \"media_hint\" to a short DESCRIPTION of the ideal image — a human will swap it for a real public image URL in the dashboard before publishing (Instagram requires an image URL to post).',\n};\n\nconst SYSTEM =\n  \"You are karst's social media writer. \" + BRAND + \" \" +\n  'Respond with STRICT JSON ONLY (no prose, no code fences) matching exactly: ' +\n  '{\"title\": string|null, \"body\": string, \"hashtags\": string|null, \"link\": string|null, \"media_hint\": string|null}.';\n\nreturn platforms.map((p) => ({\n  json: {\n    platform: p,\n    theme,\n    model: MODEL,\n    dashboard_url: DASHBOARD_URL,\n    system: SYSTEM,\n    user:\n      'Platform: ' + p + '\\n' +\n      'Guidelines: ' + (GUIDE[p] || '') + '\\n' +\n      'Theme / idea: ' + (theme || \"karst's core value proposition\") + '\\n' +\n      'Write the post now as JSON.',\n  },\n}));"
+      }
+    },
+    {
+      "id": "node_3",
+      "name": "Claude (Anthropic)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $json.model, max_tokens: 700, system: $json.system, messages: [{ role: 'user', content: $json.user }] }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      }
+    },
+    {
+      "id": "node_4",
+      "name": "Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = ($json.content && $json.content[0] && $json.content[0].text) || '';\nlet obj;\ntry {\n  obj = JSON.parse(text);\n} catch (e) {\n  const m = text.match(/\\{[\\s\\S]*\\}/);\n  obj = m ? JSON.parse(m[0]) : { body: text };\n}\nconst job = $('Build jobs').item.json;\nreturn {\n  json: {\n    platform: job.platform,\n    theme: job.theme || null,\n    title: obj.title ?? null,\n    body: (obj.body ?? text ?? '').toString(),\n    hashtags: obj.hashtags ?? null,\n    link: obj.link ?? 'https://karst.dev',\n    media_hint: obj.media_hint ?? null,\n    dashboard_url: job.dashboard_url,\n  },\n};"
+      }
+    },
+    {
+      "id": "node_5",
+      "name": "Post draft to dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.dashboard_url }}/api/ingest/social",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ platform: $json.platform, body: $json.body, theme: $json.theme, title: $json.title, hashtags: $json.hashtags, link: $json.link, media_hint: $json.media_hint }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build jobs": {
+      "main": [
+        [
+          {
+            "node": "Claude (Anthropic)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude (Anthropic)": {
+      "main": [
+        [
+          {
+            "node": "Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse": {
+      "main": [
+        [
+          {
+            "node": "Post draft to dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
