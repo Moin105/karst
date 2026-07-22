@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Pages that don't need a session.
-const PUBLIC_PAGES = ['/login', '/forgot', '/reset'];
+//
+// /bootstrap MUST be here: it is the recovery route for being locked out, so by
+// definition its user has no session. Guarding it would redirect them to the
+// /login they cannot get past. The page defends itself instead — it 404s unless
+// KARST_BOOTSTRAP_TOKEN is set, and requires that token to do anything.
+const PUBLIC_PAGES = ['/login', '/forgot', '/reset', '/bootstrap'];
 
 function isPublicPage(pathname: string): boolean {
   for (const p of PUBLIC_PAGES) {
