@@ -6,10 +6,10 @@ after a copy change.
 
 ```
 social/
-├── generate.mjs        # builds the 20 static cards → svg/
+├── generate.mjs        # builds the 24 static cards → svg/
 ├── render.mjs          # svg/ → png/ (pixel-exact, via @resvg/resvg-js)
-├── svg/                # 20 editable source cards
-├── png/                # 20 ready-to-post PNGs
+├── svg/                # 24 editable source cards
+├── png/                # 24 ready-to-post PNGs
 └── animated/
     ├── *.svg           # 5 looping animations (SMIL)
     ├── capture-anim.mjs# animations → gif/ (drives your installed Chrome, pure JS)
@@ -21,7 +21,7 @@ social/
 ```bash
 cd marketing/social
 npm i                       # resvg (static cards) + puppeteer-core/pngjs/gifenc (gifs)
-node generate.mjs           # (re)build the 20 SVG cards
+node generate.mjs           # (re)build the 24 SVG cards
 node render.mjs             # SVG → PNG
 node animated/capture-anim.mjs   # animated SVG → looping GIF (no ffmpeg needed)
 ```
@@ -37,7 +37,7 @@ ffmpeg -i animated/gif/anim-flow.gif -movflags +faststart -pix_fmt yuv420p anim-
 
 ---
 
-## The 20 static cards
+## The 24 static cards
 
 Each card is named `NN-topic-RATIO`. The ratio tells you where it fits best.
 
@@ -63,6 +63,23 @@ Each card is named `NN-topic-RATIO`. The ratio tells you where it fits best.
 | 18 | quote | 4:5 | Pull-quote (portrait) |
 | 19 | compare | 1:1 | karst vs. whole-repo dump |
 | 20 | hero | 1:1 | Brand hero / avatar |
+| 21 | proof-blastradius | 1:1 | **Real `karst impact` output** — 52 affected, CRITICAL |
+| 22 | proof-blastradius | 4:5 | Same, portrait (Instagram feed) |
+| 23 | proof-graph | 1:1 | **Real `graph-index` output** — 1001 nodes, 2718 edges, 6.4s |
+| 24 | proof-cost | 16:9 | **Real cost meter** — exact per-model token spend |
+
+### Proof cards (21–24) — read this before posting them
+
+Cards 01–20 *assert* things ("Blast radius — see what breaks before you change
+it"). Cards 21–24 **show** them: actual terminal output, captured by running
+karst on its own repo. For developer audiences the proof cards consistently
+outperform the brand cards, because the claim and the evidence are the same
+object.
+
+The numbers are therefore **perishable**. Re-capture and update the `terminal`
+blocks in `generate.mjs` before any launch push — the commands are in
+[`../CONTENT-CALENDAR.md`](../CONTENT-CALENDAR.md). A stale figure someone can
+disprove costs more credibility than the card ever earned.
 
 ## The 5 animations
 
@@ -89,6 +106,8 @@ Pick the asset whose ratio matches the slot. When in doubt, **1:1 is the safest
 single post** (renders well everywhere); **9:16 is for Stories/Reels/Shorts**.
 
 ### Twitter / X
+- **Lead with a proof card** — `21-proof-blastradius`, `23-proof-graph`,
+  `24-proof-cost`. On X these are the ones worth posting; brand cards are filler.
 - In-feed image/card: **16:9** (`01`, `05`, `11`, `16`, `17`) or **1:1**.
 - In-feed video/GIF: **16:9** or **1:1** — `anim-terminal`, `anim-flow` (GIF, or MP4 via ffmpeg).
 - Profile avatar: **1:1** `20-hero`.
@@ -104,7 +123,8 @@ single post** (renders well everywhere); **9:16 is for Stories/Reels/Shorts**.
 - Keep text legible at thumbnail size: `04`, `09`, `15` read well small.
 
 ### Instagram
-- Feed (portrait, best reach): **4:5** (`03`, `07`, `08`, `14`, `18`).
+- Feed (portrait, best reach): **4:5** — `22-proof-blastradius` first, then
+  `03`, `07`, `08`, `14`, `18`.
 - Feed (square): **1:1**.
 - Stories / Reels: **9:16** (`12`); for motion, convert a GIF to MP4 (ffmpeg one-liner above).
 - Carousel: pair `15-install` + `09-feature-cited` + `11-feature-local`.

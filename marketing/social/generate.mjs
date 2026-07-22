@@ -46,7 +46,47 @@ function pill(cx, y, w, h, label, color) {
     <text x="${cx}" y="${y + h * 0.66}" font-family="${SANS}" font-size="${Math.round(h * 0.4)}" font-weight="500" fill="${txt}" text-anchor="middle">${esc(label)}</text>`;
 }
 
-// Generic card. spec: {kind, eyebrow, lines:[], accentLine, sub, stat, statLabel, code, pills:[]}
+// A terminal panel showing real captured output. lines: [{t, c}] where c is
+// 'dim' | 'text' | 'emerald' | 'indigo' | 'amber' (default 'text').
+// Monospace advance width is ~0.601em, which is what sizes the panel to fit.
+const TERM_COLORS = { dim: C.dim, text: '#e2e8f0', emerald: C.emerald, indigo: C.indigo, amber: '#fbbf24' };
+
+// maxH caps the panel so it can never overflow the canvas: the font is sized by
+// whichever of width or height binds first.
+function terminal(x, y, w, lines, title, maxH = Infinity) {
+  const padX = w * 0.038;
+  const maxLen = Math.max(...lines.map((l) => (l.t ?? l).length), 1);
+  const barU = title ? 2.4 : 0;
+  const fs = Math.min(
+    (w - padX * 2) / (maxLen * 0.601),                              // width-bound
+    (maxH - padX * 2) / (barU + lines.length * 1.62),               // height-bound
+    w * 0.042,                                                       // absolute cap
+  );
+  const lineH = fs * 1.62;
+  const barH = title ? fs * 2.4 : 0;
+  const panelH = barH + padX * 1.4 + lines.length * lineH + padX * 0.6;
+
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${panelH}" rx="${w * 0.018}" fill="#0d1117" stroke="${C.border}"/>`;
+  if (title) {
+    s += `<path d="M${x} ${y + barH}H${x + w}" stroke="${C.border}" stroke-width="1"/>`;
+    const dotY = y + barH / 2, r = fs * 0.26;
+    ['#ef4444', '#f59e0b', '#22c55e'].forEach((col, i) => {
+      s += `<circle cx="${x + padX + i * r * 3.2}" cy="${dotY}" r="${r}" fill="${col}" opacity="0.75"/>`;
+    });
+    s += `<text x="${x + w / 2}" y="${dotY + fs * 0.34}" font-family="${MONO}" font-size="${fs * 0.82}" fill="${C.dim}" text-anchor="middle">${esc(title)}</text>`;
+  }
+  let ly = y + barH + padX * 1.4 + fs * 0.82;
+  for (const l of lines) {
+    const t = l.t ?? l;
+    if (t !== '') {
+      s += `<text x="${x + padX}" y="${ly}" font-family="${MONO}" font-size="${fs}" fill="${TERM_COLORS[l.c] || TERM_COLORS.text}" xml:space="preserve">${esc(t)}</text>`;
+    }
+    ly += lineH;
+  }
+  return { svg: s, height: panelH };
+}
+
+// Generic card. spec: {kind, eyebrow, lines:[], accentLine, sub, stat, statLabel, code, pills:[], terminal:{title,lines}}
 function card(w, h, spec) {
   const land = w > h * 1.2;
   const u = Math.min(w, h);
@@ -65,8 +105,28 @@ function card(w, h, spec) {
   // logo lockup (top-left always, smaller on landscape)
   body += wordmark(margin, h * 0.12, u * 0.07);
 
-  // vertical layout: stat cards center the number; text cards stack from a band
-  if (spec.stat) {
+  // vertical layout: proof cards lead with real output; stat cards center the
+  // number; text cards stack from a band
+  if (spec.terminal) {
+    const tm = w * 0.06;
+    const pw = w - tm * 2;
+    const hsize = u * 0.058;
+    let hy = h * 0.225;
+    if (spec.eyebrow) {
+      body += `<text x="${tm}" y="${hy - hsize * 1.0}" font-family="${MONO}" font-size="${u * 0.032}" font-weight="500" fill="${accentColor}" letter-spacing="2">${esc(spec.eyebrow)}</text>`;
+    }
+    for (const line of spec.lines || []) {
+      body += `<text x="${tm}" y="${hy}" font-family="${SANS}" font-size="${hsize}" font-weight="700" fill="${line.accent ? accentColor : C.text}">${esc(line.t ?? line)}</text>`;
+      hy += hsize * 1.12;
+    }
+    const py = hy + u * 0.03;
+    const availH = h * 0.9 - py - (spec.sub ? u * 0.1 : 0);
+    const term = terminal(tm, py, pw, spec.terminal.lines, spec.terminal.title, availH);
+    body += term.svg;
+    if (spec.sub) {
+      body += `<text x="${tm}" y="${py + term.height + u * 0.072}" font-family="${SANS}" font-size="${u * 0.036}" fill="${C.dim}">${esc(spec.sub)}</text>`;
+    }
+  } else if (spec.stat) {
     body += `<text x="${cx}" y="${h * 0.5 + u * 0.13}" font-family="${SANS}" font-size="${u * 0.36}" font-weight="700" fill="${C.emerald}" text-anchor="middle">${esc(spec.stat)}</text>`;
     if (spec.statLabel) body += `<text x="${cx}" y="${h * 0.5 + u * 0.27}" font-family="${SANS}" font-size="${u * 0.06}" font-weight="600" fill="${C.text}" text-anchor="middle">${esc(spec.statLabel)}</text>`;
     if (spec.sub) body += `<text x="${cx}" y="${h * 0.5 + u * 0.355}" font-family="${SANS}" font-size="${u * 0.042}" fill="${C.dim}" text-anchor="middle">${esc(spec.sub)}</text>`;
@@ -132,6 +192,78 @@ const cards = [
   ['18-quote-4x5', PT, { lines: [{ t: 'Stop dumping' }, { t: 'your whole repo' }, { t: 'into the model.', accent: true }] }],
   ['19-compare-1x1', SQ, { eyebrow: 'PACK-SCOPED RETRIEVAL', lines: [{ t: '5,000' }, { t: '→ 25 chunks', accent: true }], sub: 'precise context, not noise' }],
   ['20-hero-1x1', SQ, { lines: [{ t: 'karst' }], sub: 'code context for AI dev tools', pills: [{ label: 'MCP-native', color: 'indigo' }, { label: 'Apache-2.0', color: 'emerald' }] }],
+
+  // --- Proof cards: real captured output, not claims. Regenerate the numbers
+  // with the commands in ../CONTENT-CALENDAR.md before a launch; stale figures
+  // are worse than none. Captured on karst's own repo (135 files).
+  ['21-proof-blastradius-1x1', SQ, {
+    eyebrow: 'REAL OUTPUT', lines: [{ t: 'What breaks if' }, { t: 'I change this?', accent: true }],
+    sub: 'One model class. 52 dependents, each verifiable.',
+    terminal: {
+      title: 'karst impact', lines: [
+        { t: '$ karst impact --target Chunk', c: 'text' },
+        { t: '' },
+        { t: 'Targets:  karst/models.py::Chunk', c: 'dim' },
+        { t: 'Affected: 52     Risk: CRITICAL', c: 'amber' },
+        { t: '' },
+        { t: ' depth 1  calls   chunker.py:119-164', c: 'text' },
+        { t: ' depth 1  calls   store.py:337-355', c: 'text' },
+        { t: ' depth 2  calls   graphrag.py:130-153', c: 'text' },
+        { t: ' depth 2  calls   store.py:187-249', c: 'text' },
+        { t: ' depth 3  calls   mcp_server.py:173-226', c: 'text' },
+        { t: ' … and 46 more', c: 'dim' },
+      ],
+    },
+  }],
+  ['22-proof-blastradius-4x5', PT, {
+    eyebrow: 'REAL OUTPUT', lines: [{ t: 'Know the' }, { t: 'blast radius', accent: true }],
+    sub: 'Every row cites an exact file:line. Verify, don’t trust.',
+    terminal: {
+      title: 'karst impact', lines: [
+        { t: '$ karst impact --target Chunk', c: 'text' },
+        { t: '' },
+        { t: 'Affected: 52     Risk: CRITICAL', c: 'amber' },
+        { t: '' },
+        { t: ' depth 1  calls   chunker.py:119-164', c: 'text' },
+        { t: ' depth 2  calls   store.py:187-249', c: 'text' },
+        { t: ' depth 3  calls   mcp_server.py:173-226', c: 'text' },
+        { t: ' … and 46 more', c: 'dim' },
+      ],
+    },
+  }],
+  ['23-proof-graph-1x1', SQ, {
+    eyebrow: 'REAL OUTPUT', lines: [{ t: 'A real call graph,' }, { t: 'in 6.4 seconds', accent: true }],
+    sub: 'Not embeddings. Actual call and import edges.',
+    terminal: {
+      title: 'karst graph-index', lines: [
+        { t: '$ karst graph-index .', c: 'text' },
+        { t: '' },
+        { t: 'Built graph: 1001 nodes, 2718 edges', c: 'emerald' },
+        { t: 'from 135 files / 739 chunks in 6.4s', c: 'dim' },
+        { t: '' },
+        { t: 'Edges by kind:', c: 'dim' },
+        { t: '  calls        1373', c: 'text' },
+        { t: '  contains      739', c: 'text' },
+        { t: '  imports       604', c: 'text' },
+        { t: '  implements      2', c: 'text' },
+      ],
+    },
+  }],
+  ['24-proof-cost-16x9', LS, {
+    eyebrow: 'REAL OUTPUT', lines: [{ t: 'The exact bill, every answer' }],
+    sub: 'Estimate before the call. Real provider tokens after.',
+    terminal: {
+      title: 'karst ask', lines: [
+        { t: '$ karst ask "how does indexing work?"', c: 'text' },
+        { t: '' },
+        { t: '  … cited answer, 3 sources …', c: 'dim' },
+        { t: '' },
+        { t: '1,840 in + 612 out tok', c: 'text' },
+        { t: '$0.0276 + $0.0459 = $0.0735', c: 'emerald' },
+        { t: '(anthropic:claude-opus-4-8)', c: 'dim' },
+      ],
+    },
+  }],
 ];
 
 mkdirSync(new URL('./svg/', import.meta.url), { recursive: true });
