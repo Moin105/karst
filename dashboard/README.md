@@ -86,6 +86,66 @@ The canonical end-to-end walkthrough is in [`docs/DEPLOY.md`](../docs/DEPLOY.md)
    # -> {"ok":true,"db":"postgres","schema_ready":true}
    ```
 
+## Locked out of the panel
+
+### Option A — `/bootstrap` (no local DB access needed)
+
+Use this when you can't read `DATABASE_URL`. Vercel marks env vars as
+**Sensitive** by default for secrets, and a Sensitive value is write-only — the
+CLI returns `[sensitive]` and the dashboard has no reveal button. This route
+sidesteps that by running inside the deployed app, which already holds a working
+connection.
+
+1. Vercel → Settings → Environment Variables → add **`KARST_BOOTSTRAP_TOKEN`**
+   with a long random value. Do **not** mark it Sensitive — you have to type it.
+2. Deploy (`git push`, or Deployments → Redeploy).
+3. Open `/bootstrap`, enter the token and a new password.
+4. Sign in at `/login`.
+5. **Delete `KARST_BOOTSTRAP_TOKEN` and redeploy.**
+
+Step 5 is not optional. While that var is set, anyone holding the token can reset
+the admin password. The page 404s when it is unset, so removing the var fully
+disarms it — the code can stay in the repo.
+
+The form is rate-limited (5 attempts/min per instance) and compares the token
+with `timingSafeEqual`.
+
+### Option B — from your machine
+
+Needs the real connection string from the Neon console (not Vercel — see above).
+Writes the password straight to the database and verifies it:
+
+```bash
+npm run admin:password -- --email you@example.com --password "a long random password" \
+  --db "postgresql://…"     # the SAME DATABASE_URL Vercel uses
+```
+
+No SMTP, no redeploy, no env-precedence guesswork. It prints the host and
+database it touched, lists the admin rows it found, and fails loudly if the
+stored hash doesn't verify afterwards.
+
+**Then check `KARST_ADMIN_EMAIL` in Vercel matches the address you passed.**
+`authenticatePassword` compares the email *before* the password, so a mismatch
+is rejected no matter what you type.
+
+### Why the email reset is easy to get stuck on
+
+Three separate things make a failure invisible, and any one of them is enough:
+
+1. **`requestPasswordReset` always returns `'sent'`** — deliberately, so nobody
+   can probe which addresses exist. It reports success when the address doesn't
+   match, when SMTP is unconfigured, and when the DB write throws. The UI can
+   never tell you which happened.
+2. **Email is best-effort.** Without `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` the
+   send is skipped and only a server-side `console.error` records it. Also needs
+   `KARST_PUBLIC_URL` (or Vercel's `VERCEL_URL`) to build the link at all.
+3. **The DB hash beats the env hash.** `authenticatePassword` reads
+   `admin_users.password_hash` first and only falls back to
+   `KARST_ADMIN_PASSWORD_HASH` when no row exists. Once any reset has succeeded,
+   editing that env var in Vercel does nothing — a genuinely confusing lockout.
+
+`npm run admin:password` sidesteps all three by writing the row that wins.
+
 ## How the CLI phones home
 
 The `karst` CLI reads `KARST_INGEST_URL` from the user's environment and POSTs anonymized events to the dashboard:

@@ -8,6 +8,7 @@
     "start": "next start -p 3001",
     "lint": "next lint",
     "hash-password": "node scripts/gen-password-hash.mjs",
+    "admin:password": "node scripts/set-admin-password.mjs",
     "db:migrate": "tsx --env-file=.env.local lib/migrate.ts",
     "db:seed": "tsx --env-file=.env.local lib/seed.ts"
   },
