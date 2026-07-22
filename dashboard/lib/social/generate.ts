@@ -1,11 +1,30 @@
 import { insertSocialPost, type SocialPlatform, type SocialPost } from '@/lib/db';
 
-// In-process draft generation. Calls Anthropic directly (no SDK — just fetch) so
-// the whole thing runs as a normal Next.js route on Vercel. One post per
-// requested platform, generated in parallel.
+// In-process draft generation. Calls the model provider directly (no SDK — just
+// fetch) so the whole thing runs as a normal Next.js route on Vercel. One post
+// per requested platform, generated in parallel.
+//
+// Two providers are supported because these posts are short and structured, so
+// a free-tier Gemini Flash key handles them fine — an Anthropic key is optional.
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = process.env.KARST_SOCIAL_MODEL || 'claude-sonnet-4-6';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+type Provider = 'anthropic' | 'gemini';
+
+const DEFAULT_MODEL: Record<Provider, string> = {
+  anthropic: 'claude-sonnet-4-6',
+  gemini: 'gemini-2.0-flash',
+};
+
+// Whichever key is present wins; KARST_SOCIAL_PROVIDER forces one explicitly.
+function pickProvider(): Provider {
+  const explicit = process.env.KARST_SOCIAL_PROVIDER?.toLowerCase();
+  if (explicit === 'anthropic' || explicit === 'gemini') return explicit;
+  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
+  if (process.env.GEMINI_API_KEY) return 'gemini';
+  throw new Error('no model key set — set GEMINI_API_KEY or ANTHROPIC_API_KEY');
+}
 
 const BRAND =
   'karst gives any AI coding agent (Claude, Cursor) a local map of a codebase: ' +
@@ -74,7 +93,7 @@ async function callClaude(system: string, user: string): Promise<string> {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: process.env.KARST_SOCIAL_MODEL || DEFAULT_MODEL.anthropic,
       max_tokens: 700,
       system,
       messages: [{ role: 'user', content: user }],
@@ -89,6 +108,35 @@ async function callClaude(system: string, user: string): Promise<string> {
   return text;
 }
 
+async function callGemini(system: string, user: string): Promise<string> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('GEMINI_API_KEY is not set');
+  const model = process.env.KARST_SOCIAL_MODEL || DEFAULT_MODEL.gemini;
+  // Key goes in a header, never the query string, so it can't leak via logs.
+  const res = await fetch(`${GEMINI_URL}/${model}:generateContent`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      // SYSTEM already pins the exact JSON shape; asking for a JSON mime type
+      // makes the model honour it instead of wrapping it in prose or fences.
+      generationConfig: { maxOutputTokens: 700, responseMimeType: 'application/json' },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`gemini ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (typeof text !== 'string' || !text.trim()) throw new Error('empty model response');
+  return text;
+}
+
+function callModel(system: string, user: string): Promise<string> {
+  return pickProvider() === 'gemini' ? callGemini(system, user) : callClaude(system, user);
+}
+
 export async function generateDrafts(
   theme: string,
   platforms: SocialPlatform[]
@@ -99,7 +147,7 @@ export async function generateDrafts(
   await Promise.all(
     platforms.map(async (p) => {
       try {
-        const text = await callClaude(SYSTEM, userPrompt(p, theme));
+        const text = await callModel(SYSTEM, userPrompt(p, theme));
         const obj = parseLenient(text);
         // Falsy/empty body (model returned "" or a non-string) falls back to the
         // raw completion so we never insert a blank draft.

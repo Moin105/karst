@@ -18,7 +18,7 @@ Everything is on-demand (you click Generate / Publish). Nothing posts automatica
 ## How it works
 
 - **Generate** (`/social`) → `POST /api/social/trigger {action:'generate'}` →
-  `lib/social/generate.ts` calls Anthropic once per selected platform (in parallel),
+  `lib/social/generate.ts` calls the configured provider once per selected platform (in parallel),
   parses the JSON, and inserts each as a **draft**. The button reports how many
   drafts were created (and how many platforms failed).
 - **Publish now** (`/social/[id]`, enabled once **Approved**) →
@@ -32,11 +32,20 @@ Everything is on-demand (you click Generate / Publish). Nothing posts automatica
 
 Add these in your Vercel project (and `.env.local` for dev). Set only what you use.
 
-**Generation (required):**
+**Generation — set _one_ of these keys:**
 | Var | What |
 |-----|------|
-| `ANTHROPIC_API_KEY` | Your Anthropic key. Without it, Generate returns a clear error. |
-| `KARST_SOCIAL_MODEL` | optional; default `claude-sonnet-4-6`. Use `claude-haiku-4-5-20251001` for ~free generation. |
+| `GEMINI_API_KEY` | A Google AI Studio key. The **free tier covers this workload** — the posts are short and structured. Default model `gemini-2.0-flash`. |
+| `ANTHROPIC_API_KEY` | An Anthropic key. Default model `claude-sonnet-4-6`. |
+| `KARST_SOCIAL_PROVIDER` | optional; `gemini` or `anthropic`. Forces one when both keys are set. Otherwise Anthropic wins if present, else Gemini. |
+| `KARST_SOCIAL_MODEL` | optional; overrides the default model for whichever provider is active. |
+
+With neither key set, Generate fails with `no model key set — set GEMINI_API_KEY
+or ANTHROPIC_API_KEY`.
+
+> **A ChatGPT Plus/Pro subscription does not work here.** That subscription only
+> covers chatgpt.com; programmatic access is the separate, separately-billed
+> OpenAI API. There is no way to drive this (or any script) from a Plus plan.
 
 **Publishing (per channel — unset = "not configured", post by hand):**
 | Channel | Env | Notes |
@@ -59,5 +68,6 @@ to your local n8n). Full setup + importable workflows live in
 
 ## Cost
 
-Effectively the price of a few Claude calls — pennies a month at this volume (less
-on Haiku). Discord/Reddit/Instagram APIs are free; X is free at low volume.
+Effectively the price of a few model calls — pennies a month at this volume, and
+**$0 on Gemini's free tier**, which is the recommended setup. Discord/Reddit/
+Instagram APIs are free; X is free at low volume.
