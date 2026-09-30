@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "karst"
-version = "0.2.9"
+version = "0.2.10"
 description = "Code context for AI dev tools — graph-grounded, pack-scoped retrieval over MCP. 60% fewer tokens, audit-grade citations."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "karst" }]
+authors = [{ name = "Moin Latif", email = "moinlatif105@gmail.com" }]
+maintainers = [{ name = "Moin Latif", email = "moinlatif105@gmail.com" }]
 keywords = [
     "mcp", "model-context-protocol", "code-search", "rag", "graphrag",
     "tree-sitter", "code-intelligence", "ai", "llm", "cursor", "claude",
@@ -29,21 +30,29 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+# Upper bounds keep a fresh `pip install karst` from pulling a future major
+# (or, for 0.x packages, minor) release that nobody has tested. The weekly
+# install-smoke workflow tells us when a bound is ready to move.
 dependencies = [
-    "tree-sitter>=0.23",
-    "tree-sitter-language-pack>=0.7.3",
-    "pathspec>=0.12",
-    "fastembed>=0.4",
-    "qdrant-client>=1.12",
-    "unidiff>=0.7.5",
-    "networkx>=3.2",
-    "mcp>=1.2",
+    # 0.26.0 segfaults / corrupts node data mid-walk on real repos (seen on
+    # Windows + Python 3.13); 0.25.x is clean.
+    "tree-sitter>=0.23,<0.26",
+    "tree-sitter-language-pack>=0.7.3,<2",
+    "pathspec>=0.12,<2",
+    "fastembed>=0.4,<0.9",
+    "qdrant-client>=1.12,<2",
+    "unidiff>=0.7.5,<2",
+    "networkx>=3.2,<4",
+    # mcp 2.x removed `mcp.server.fastmcp` (renamed to MCPServer), which
+    # breaks `karst-mcp` at import time.
+    "mcp>=1.2,<2",
 ]
 
 [project.urls]
-Homepage = "https://github.com/Moin105/upgraded-garbanzo"
-Repository = "https://github.com/Moin105/upgraded-garbanzo"
-Issues = "https://github.com/Moin105/upgraded-garbanzo/issues"
+Homepage = "https://github.com/Moin105/karst"
+Repository = "https://github.com/Moin105/karst"
+Issues = "https://github.com/Moin105/karst/issues"
+Changelog = "https://github.com/Moin105/karst/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 anthropic = ["anthropic>=0.39"]

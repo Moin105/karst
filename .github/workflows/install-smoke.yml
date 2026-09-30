@@ -1,0 +1,64 @@
+name: Install smoke
+
+# Builds the wheel, installs it into a clean interpreter the way a new user
+# would, then drives the CLI and the MCP server end to end on every OS and
+# Python we claim to support. The weekly run catches a new dependency release
+# that breaks fresh installs (tree-sitter 0.26 and mcp 2.x both did) before
+# users hit it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel --outdir dist
+
+      - name: Install the wheel (no source tree on the path)
+        run: python -m pip install dist/*.whl
+
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.karst/models
+          key: karst-models-${{ runner.os }}-bge-small-en-v1.5-v1
+
+      - name: CLI — quickstart, ask, impact
+        run: |
+          # Work outside the checkout so ./karst can't shadow the installed package.
+          repo="$RUNNER_TEMP/sample-repo"
+          cp -r tests/fixtures/graph_repo "$repo"
+          cd "$repo"
+          karst --version
+          karst quickstart .
+          karst ask "how does charging a user work?" --no-llm 2>&1 | tee ask.txt
+          grep -q "billing.py:" ask.txt
+          karst impact --target get_user --graph-path "$HOME/.karst/indexes/sample-repo/graph.pkl" 2>&1 | tee impact.txt
+          grep -Eq "charge|login" impact.txt
+
+      - name: MCP server — stdio handshake, search, impact
+        run: python tests/install_smoke_mcp.py "$RUNNER_TEMP/sample-repo"

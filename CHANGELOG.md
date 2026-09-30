@@ -2,6 +2,30 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## 0.2.10
+
+**Fresh installs work again.** A clean `pip install karst` had started pulling
+dependency releases that broke on first use:
+
+- **`karst index` / `quickstart` crashed on the first file** with
+  `TypeError: source must be a bytestring or a callable, not str` (tree-sitter
+  0.26 only accepts bytes). The parser now passes bytes, with a str fallback for
+  bindings that want text.
+- **tree-sitter 0.26 segfaults mid-walk** on real repos (seen on Windows +
+  Python 3.13), and before crashing it can corrupt node data. That surfaced as
+  `PydanticSerializationError: numpy.float32` when writing chunks to Qdrant.
+  tree-sitter is now held below 0.26.
+- **`karst-mcp` failed at import** under mcp 2.x, which removed
+  `mcp.server.fastmcp`. mcp is now held below 2.
+- Every runtime dependency now has an upper bound, so an untested future major
+  can't break installs silently.
+- New **install-smoke** CI workflow: builds the wheel, installs it on Linux,
+  macOS and Windows with Python 3.10–3.13, then runs `quickstart`, `ask`,
+  `impact` and a real MCP stdio session. Runs weekly as well, to catch new
+  dependency releases.
+- Project and MCP-registry links now point at
+  [github.com/Moin105/karst](https://github.com/Moin105/karst).
+
 ## 0.2.9
 
 - **Exact, per-model cost after every answer.** The token meter no longer just
