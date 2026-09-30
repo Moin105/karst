@@ -17,6 +17,9 @@ dependency releases that broke on first use:
   tree-sitter is now held below 0.26.
 - **`karst-mcp` failed at import** under mcp 2.x, which removed
   `mcp.server.fastmcp`. mcp is now held below 2.
+- **`search_code` over MCP never returned on Windows.** The first lazy import
+  of numpy inside a tool call hung while the stdio reader thread was blocked
+  on stdin. `karst-mcp` now imports its native dependencies at startup.
 - Every runtime dependency now has an upper bound, so an untested future major
   can't break installs silently.
 - New **install-smoke** CI workflow: builds the wheel, installs it on Linux,

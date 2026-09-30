@@ -468,6 +468,20 @@ def _run_http(host: str, port: int) -> None:
     uvicorn.run(app, host=host, port=port, log_level=str(mcp.settings.log_level).lower())
 
 
+def _preload_native_deps() -> None:
+    """Import the native-extension libraries the tools otherwise load lazily.
+
+    On Windows, the first import of numpy (pulled in by fastembed and
+    qdrant-client) can hang if it happens inside a tool call while the stdio
+    transport's reader thread is blocked on stdin — so the first `search_code`
+    never returns. Importing them before the transport starts avoids that, and
+    moves the cost to startup instead of the first query.
+    """
+    import fastembed  # noqa: F401
+    import qdrant_client  # noqa: F401
+    import tree_sitter_language_pack  # noqa: F401
+
+
 def main() -> None:
     """Console entry point.
 
@@ -492,6 +506,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    _preload_native_deps()
     http = args.http or os.environ.get("KARST_MCP_HTTP", "").lower() in ("1", "true", "yes")
     if http:
         _run_http(args.host, args.port)
