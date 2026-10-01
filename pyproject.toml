@@ -36,8 +36,12 @@ classifiers = [
 dependencies = [
     # 0.26.0 segfaults / corrupts node data mid-walk on real repos (seen on
     # Windows + Python 3.13); 0.25.x is clean.
-    "tree-sitter>=0.23,<0.26",
-    "tree-sitter-language-pack>=0.7.3,<2",
+    "tree-sitter>=0.25.2,<0.26",
+    # 0.13.x is the last line that ships every grammar inside the wheel. 1.x
+    # downloads each grammar on first use, which breaks air-gapped installs and
+    # the "no runtime network" claim in docs/compliance. Don't lift this cap
+    # without a pre-seeding story (see karst/parser.py).
+    "tree-sitter-language-pack>=0.13.0,<1",
     "pathspec>=0.12,<2",
     "fastembed>=0.4,<0.9",
     "qdrant-client>=1.12,<2",

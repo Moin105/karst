@@ -41,6 +41,8 @@ from typing import TYPE_CHECKING
 
 from mcp.server.fastmcp import FastMCP
 
+from .storage import storage_for, unclaimed_legacy_storage
+
 if TYPE_CHECKING:  # pragma: no cover
     from .embedder import Embedder
     from .graph.store import GraphStore
@@ -51,15 +53,9 @@ mcp = FastMCP("karst")
 
 
 # --------------------------------------------------------------------------- #
-# Path conventions — mirror the CLI so the MCP server and `karst index` share
-# the exact same on-disk index location.
+# Path conventions — `storage_for` is shared with the CLI, so the MCP server
+# and `karst index` resolve a repo to the exact same on-disk index location.
 # --------------------------------------------------------------------------- #
-
-def _storage_for(repo_path: str) -> Path:
-    root = Path(repo_path).expanduser().resolve()
-    slug = root.name or "root"
-    return Path.home() / ".karst" / "indexes" / slug
-
 
 def _cache_dir() -> Path:
     return Path.home() / ".karst" / "models"
@@ -77,6 +73,17 @@ _NOT_INDEXED_HINT = (
     "This repo isn't indexed yet. Run `index_repository` once (or `karst index "
     "<path>` on the command line), then try again."
 )
+
+
+def _not_indexed_hint(repo_path: str) -> str:
+    legacy = unclaimed_legacy_storage(repo_path)
+    if legacy is None:
+        return _NOT_INDEXED_HINT
+    return (
+        f"{_NOT_INDEXED_HINT}\nAn index built by an older karst exists at {legacy}, "
+        "but it doesn't record which checkout it came from, so it isn't searched. "
+        "`index_repository` reuses it if it matches this repo (an incremental refresh)."
+    )
 
 
 def _est_tokens(text: str) -> int:
@@ -192,9 +199,9 @@ def search_code(
             list_packs). Scoping cuts tokens further. Omit to search all.
         limit: Max number of chunks to return (default 8).
     """
-    storage = _storage_for(repo_path)
+    storage = storage_for(repo_path)
     if not _is_indexed(storage):
-        return _NOT_INDEXED_HINT
+        return _not_indexed_hint(repo_path)
 
     with _lock:
         embedder = _get_embedder()
@@ -240,7 +247,7 @@ def find_impact(symbol: str, repo_path: str, max_depth: int = 3) -> str:
         repo_path: Absolute path to the repository (must be indexed first).
         max_depth: How many dependency hops to walk (default 3).
     """
-    storage = _storage_for(repo_path)
+    storage = storage_for(repo_path)
 
     with _lock:
         graph = _get_graph(storage)
@@ -298,9 +305,9 @@ def list_packs(repo_path: str) -> str:
     Args:
         repo_path: Absolute path to the repository (must be indexed first).
     """
-    storage = _storage_for(repo_path)
+    storage = storage_for(repo_path)
     if not storage.exists():
-        return _NOT_INDEXED_HINT
+        return _not_indexed_hint(repo_path)
 
     with _lock:
         packs = _get_packstore(storage).list()
@@ -330,12 +337,12 @@ def index_status(repo_path: str) -> str:
     Args:
         repo_path: Absolute path to the repository.
     """
-    storage = _storage_for(repo_path)
+    storage = storage_for(repo_path)
     if not _is_indexed(storage):
         return (
             f"Not indexed: {repo_path}\n"
             f"Expected index at {storage}\n"
-            f"{_NOT_INDEXED_HINT}"
+            f"{_not_indexed_hint(repo_path)}"
         )
 
     with _lock:
@@ -372,7 +379,8 @@ def index_repository(repo_path: str, reset: bool = False) -> str:
     if not root.is_dir():
         return f"Not a directory: {repo_path}"
 
-    storage = _storage_for(repo_path)
+    # for_write: indexing may adopt (and refresh) an index from an older karst.
+    storage = storage_for(repo_path, for_write=True)
 
     from .graph.builder import build_and_save
     from .indexer import index_repo

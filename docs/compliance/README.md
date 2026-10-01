@@ -51,9 +51,10 @@ in [SECURITY.md](SECURITY.md):
    use that one command and there is no GitHub traffic.
 
 The core — `index`, `ask`, `impact`, `search` — never touches the network once the
-embedding model is cached locally.
+embedding model is cached locally. Parsing grammars ship inside the installed
+`tree-sitter-language-pack` wheel; nothing is downloaded at runtime.
 
 ---
 
-*Pack version tracks the karst release it ships with. Current: karst 0.2.7,
-Apache-2.0. Maintainer attestation in [SECURITY.md](SECURITY.md).*
+*Pack version tracks the karst release it ships with. Current: the first release
+after 0.2.10, Apache-2.0. Maintainer attestation in [SECURITY.md](SECURITY.md).*

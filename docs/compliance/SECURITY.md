@@ -1,9 +1,9 @@
 # karst — Security & Air-Gap Attestation
 
 **Product:** karst (Python CLI + MCP server for local code context)
-**Version:** 0.2.7 · **License:** Apache-2.0 (source-available)
+**Version:** the first release after 0.2.10 (see the note under §3 for 0.2.10 and earlier) · **License:** Apache-2.0 (source-available)
 **Deployment model:** self-hosted, runs entirely on customer-controlled machines
-**Last reviewed:** 2026-06-23
+**Last reviewed:** 2026-10-01
 
 ---
 
@@ -47,7 +47,8 @@ of them are off.
               ▲ everything above this line stays on the customer host ▲
 ```
 
-**What is stored, and where:** the local index (`~/.karst/<repo>/`) holds your code
+**What is stored, and where:** the local index (`~/.karst/indexes/<repo>-<id>/`, where
+`<id>` is derived from the repo's absolute path; `karst where <repo>` prints it) holds your code
 chunks, their embeddings (vectors), a SHA manifest, and the graph — all on local
 disk. There is no remote store. Data at rest is protected by the host's own disk
 encryption / file permissions; karst adds no separate at-rest service.
@@ -64,11 +65,12 @@ behind a bearer token (`KARST_MCP_TOKEN`).
 | # | What | When | Direction | Contains your code? | How to disable |
 |---|------|------|-----------|---------------------|----------------|
 | 1 | **Embedding model download** (HuggingFace, ~65 MB, one-time) | First index only, then cached in `~/.karst/models` | Outbound to huggingface.co | **No** — downloads a model, sends nothing | `KARST_OFFLINE=1` (pre-seed the cache first); or pre-install via your mirror |
-| 2 | **tree-sitter grammars** | Provided by the `tree-sitter-language-pack` dependency | Pip install time (or first use on some versions) | **No** | Install the wheel from your internal mirror; pre-cache so there is no runtime fetch |
+| 2 | **tree-sitter grammars** | Compiled into the `tree-sitter-language-pack` wheel (karst pins the 0.13.x line) | **Install time only** — they arrive with the wheel, like any other dependency. Nothing is fetched at runtime | **No** | Install the wheel from your internal mirror. `KARST_OFFLINE=1` also refuses any grammar download if a 1.x language pack is installed by mistake |
 | 3 | **Cloud LLM call** (Anthropic / OpenAI) | Only if *you* set an API key AND run `ask`/`review` without `--no-llm`/`--llm local` | Outbound to the LLM provider | **Yes — the assembled prompt** (selected code snippets) | Use `--llm local` (Ollama/vLLM/LM Studio) or `--no-llm`; set no cloud key |
 | 4 | **GitHub PR review** | Only `karst review --pr` / `--post-to-pr` | Outbound via your `gh` CLI | Diff + the LLM's findings | Don't use the `--pr` path; core review reads local diffs |
 
-**Reading the table:** rows 1–2 download *tooling*, never your code. Rows 3–4 are
+**Reading the table:** row 1 downloads *tooling*, never your code; row 2 happens only
+at install time, from wherever you install packages. Rows 3–4 are
 **opt-in features you choose to enable** and are the only paths by which code could
 leave the host — both fully avoidable. For a zero-egress build: pre-seed the model,
 set `KARST_OFFLINE=1`, use `--llm local` or `--no-llm`, and do not use PR review.
@@ -77,6 +79,13 @@ set `KARST_OFFLINE=1`, use `--llm local` or `--no-llm`, and do not use PR review
 > `search_code`, `find_impact` over MCP) requires **none** of rows 1–4 after the
 > one-time local model cache exists.
 
+> **karst 0.2.10 and earlier:** those releases allow `tree-sitter-language-pack`
+> 1.x, which downloads each grammar on first use from GitHub
+> (`github.com/kreuzberg-dev/tree-sitter-language-pack/releases`) into a per-user
+> cache, and fails with `DownloadError` when there is no network. If you deploy one
+> of those versions, add `"tree-sitter-language-pack>=0.13,<1"` when you build the
+> wheelhouse (see [AIR-GAP-INSTALL.md](AIR-GAP-INSTALL.md) §1).
+
 ---
 
 ## 4. Data residency & retention
@@ -84,7 +93,8 @@ set `KARST_OFFLINE=1`, use `--llm local` or `--no-llm`, and do not use PR review
 - **Residency:** 100% on the customer host. No multi-tenant cloud, no vendor region.
 - **Retention:** the index lives in a local directory until you delete it. karst
   retains nothing elsewhere. Re-indexing overwrites in place.
-- **Right to delete:** `rm -rf ~/.karst/<repo>` (or your configured `--storage` path).
+- **Right to delete:** `rm -rf "$(karst where /path/to/repo)"` (or your configured
+  `--storage` path). Every index lives under `~/.karst/indexes/`.
 
 ## 5. Identity, access & auditing (self-hosted gateway)
 
@@ -99,7 +109,8 @@ requires them today, contact the maintainer to confirm status before deployment.
 
 - **License:** Apache-2.0 (permissive; no copyleft obligations).
 - **Direct dependencies** are mainstream, permissively-licensed OSS:
-  `tree-sitter` / `tree-sitter-language-pack` (parsing), `fastembed` (ONNX embeddings),
+  `tree-sitter` / `tree-sitter-language-pack` (parsing; grammars ship inside the wheel),
+  `fastembed` (ONNX embeddings),
   `qdrant-client` (local vector store), `networkx` (graph), `mcp` (protocol),
   `unidiff` (diff parsing). Optional extras: `anthropic`, `openai`.
 - **SBOM:** generate a CycloneDX SBOM in one command — see
@@ -120,6 +131,6 @@ requires them today, contact the maintainer to confirm status before deployment.
 ---
 
 *This document is a good-faith engineering attestation, not a legal warranty. It
-describes karst 0.2.7 in a self-hosted configuration. For a signed copy, a completed
+describes the first karst release after 0.2.10 in a self-hosted configuration. For a signed copy, a completed
 copy of your specific questionnaire, or current status of roadmap items, contact
 the maintainer (see the repository README).*

@@ -57,8 +57,24 @@ jobs:
           karst quickstart .
           karst ask "how does charging a user work?" --no-llm 2>&1 | tee ask.txt
           grep -q "billing.py:" ask.txt
-          karst impact --target get_user --graph-path "$HOME/.karst/indexes/sample-repo/graph.pkl" 2>&1 | tee impact.txt
+          karst impact --target get_user --graph-path "$(karst where)/graph.pkl" 2>&1 | tee impact.txt
           grep -Eq "charge|login" impact.txt
 
       - name: MCP server — stdio handshake, search, impact
         run: python tests/install_smoke_mcp.py "$RUNNER_TEMP/sample-repo"
+
+      # The air-gap docs promise no runtime downloads beyond the embedding model.
+      # tree-sitter-language-pack 1.x fetches grammars on first use, so check the
+      # wheel we resolved still bundles them.
+      - name: Grammars ship in the wheel (no runtime download)
+        run: python tests/install_smoke_offline.py --grammars
+
+      - name: Air-gap — quickstart + ask with networking disabled (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Ubuntu 24.04 blocks unprivileged user namespaces by default; allow
+          # them so `unshare` can run karst in a network namespace with no
+          # interfaces. The embedding model was cached by the CLI step above.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          cp -r tests/fixtures/graph_repo "$RUNNER_TEMP/airgap-repo"
+          unshare --map-root-user --net python tests/install_smoke_offline.py "$RUNNER_TEMP/airgap-repo"

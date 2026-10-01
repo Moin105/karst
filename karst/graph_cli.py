@@ -17,6 +17,7 @@ from .graph.impact import (
 )
 from .graph.store import EdgeKind, GraphStore
 from .review.diff import parse_diff
+from .storage import storage_for
 
 
 def default_graph_path(storage_dir: Path) -> Path:
@@ -33,7 +34,7 @@ def add_graph_index_subparser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
     p.add_argument(
         "--storage",
-        help="Where to write the graph (default ~/.karst/indexes/<repo>/graph.pkl).",
+        help="Where to write the graph (default: <repo index dir>/graph.pkl; see `karst where`).",
     )
     p.set_defaults(func=_cmd_graph_index)
 
@@ -49,9 +50,8 @@ def _cmd_graph_index(args: argparse.Namespace) -> int:
         if graph_path.is_dir():
             graph_path = graph_path / "graph.pkl"
     else:
-        # Mirror the vector-index default layout.
-        base = Path.home() / ".karst" / "indexes" / (root.resolve().name or "root")
-        graph_path = default_graph_path(base)
+        # Same directory `karst index` writes the vector index to.
+        graph_path = default_graph_path(storage_for(root, for_write=True))
 
     print(f"Indexing graph: {root.resolve()}", file=sys.stderr)
     print(f"Output:         {graph_path}", file=sys.stderr)

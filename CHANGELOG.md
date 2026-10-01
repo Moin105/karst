@@ -2,6 +2,34 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## Unreleased
+
+- **Repos that share a folder name no longer share an index.** Indexes were
+  keyed by folder name alone, so `/work/clientA/api` and `/work/clientB/api`
+  both used `~/.karst/indexes/api`: indexing one replaced the other's chunks,
+  and a search over A could return B's code. Each checkout now gets
+  `~/.karst/indexes/<name>-<id>`, where `<id>` is a short hash of its absolute
+  path. The CLI and the MCP server resolve it through one helper
+  (`karst/storage.py`), and `manifest.json` now records the indexed root.
+- **Existing indexes keep working.** An old `~/.karst/indexes/<name>` dir doesn't
+  record which checkout built it, so it isn't searched until the next
+  `karst index` / `quickstart` / `index_repository` adopts it. That happens when
+  at least half its files are unchanged in this checkout, and the refresh is
+  incremental. Otherwise the checkout gets a fresh dir. `ask` and the MCP tools
+  say so when they find an old dir that hasn't been adopted.
+- New **`karst where [path]`** prints a repo's index directory, e.g.
+  `karst impact --target X --graph-path "$(karst where)/graph.pkl"`.
+- **Air-gapped installs work again.** `tree-sitter-language-pack` 1.x downloads
+  each grammar from GitHub on first use (and raises `DownloadError` offline),
+  which broke the "no runtime network" claim. karst now pins the 0.13.x line,
+  which ships every grammar inside the wheel, and requires `tree-sitter>=0.25.2`.
+  With `KARST_OFFLINE=1`, karst refuses to parse rather than let a 1.x pack
+  download a grammar. The egress table and air-gap guide are updated, including
+  the extra constraint needed when mirroring 0.2.10 or earlier.
+- install-smoke CI checks that the resolved language pack bundles its grammars,
+  and on Linux runs `quickstart` + `ask` in a network namespace with no
+  interfaces.
+
 ## 0.2.10
 
 **Fresh installs work again.** A clean `pip install karst` had started pulling

@@ -186,6 +186,9 @@ def index_repo(
         upserted = store.upsert(embedded_iter, pack_tagger=tagger)
         result.edge_effects = {"upserted": upserted}
 
+    # Record whose index this is, so storage_for never hands it to another
+    # checkout that happens to share the folder name.
+    manifest.root = str(root_path)
     save_manifest(storage_path, manifest)
     store.close()
     return result
