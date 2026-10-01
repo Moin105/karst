@@ -10,15 +10,30 @@ golden image and developers receive it pre-installed.
 ## 1. Build an offline bundle (on a connected build host)
 
 ```bash
-# a) Download karst + all dependencies as wheels into a local folder ("wheelhouse")
-python -m pip download "karst==0.2.7" -d ./karst-wheelhouse
+# a) Download karst + all dependencies as wheels into a local folder ("wheelhouse").
+#    Pin the version you approved, e.g. "karst==<version>".
+python -m pip download karst -d ./karst-wheelhouse
 #    add the LLM extra only if you intend to use a cloud model:
-#    python -m pip download "karst[anthropic]==0.2.7" -d ./karst-wheelhouse
+#    python -m pip download "karst[anthropic]" -d ./karst-wheelhouse
 
 # b) Pre-seed the embedding model cache (one-time, needs internet ONCE)
 python -m pip install --no-index --find-links ./karst-wheelhouse karst
 karst index .            # downloads the ~65 MB model into ~/.karst/models
 #    -> copy ~/.karst/models  alongside the wheelhouse for transfer
+```
+
+Build the wheelhouse on the same OS, CPU architecture and Python version as the
+target host: several dependencies ship compiled wheels.
+
+The tree-sitter grammars karst parses with are compiled into the
+`tree-sitter-language-pack` wheel (karst pins its 0.13.x line), so they travel in
+the wheelhouse and nothing is fetched at runtime. **karst 0.2.10 and earlier**
+allow `tree-sitter-language-pack` 1.x, which downloads each grammar from GitHub on
+first use and fails on an air-gapped host. If you mirror one of those versions,
+constrain it when you download:
+
+```bash
+python -m pip download "karst==0.2.10" "tree-sitter-language-pack>=0.13,<1" -d ./karst-wheelhouse
 ```
 
 Transfer `karst-wheelhouse/` **and** the `~/.karst/models` folder to the air-gapped
@@ -33,7 +48,9 @@ mkdir -p ~/.karst && cp -r ./models ~/.karst/models
 # Install entirely from the local wheelhouse — no PyPI, no network
 python -m pip install --no-index --find-links ./karst-wheelhouse karst
 
-# Force fully-offline mode (blocks any model/grammar fetch)
+# Force fully-offline mode: the embedder reads only the cached model, and
+# karst refuses any grammar download (a guard in case a 1.x language pack
+# ever lands in the environment)
 export KARST_OFFLINE=1
 ```
 
@@ -41,10 +58,14 @@ export KARST_OFFLINE=1
 
 ```bash
 cd /path/to/your/repo
-karst index .                         # parse + embed + graph, all local
+karst quickstart .                    # parse + embed + graph + packs, all local
 karst ask "how does auth work?" --no-llm     # cited chunks, no LLM, no network
-karst impact UserModel                # blast-radius, pure local graph walk
+karst impact --target UserModel --graph-path "$(karst where)/graph.pkl"   # blast radius, local graph walk
 ```
+
+The index lands in `~/.karst/indexes/<repo>-<id>` (`<id>` comes from the repo's
+absolute path, so two checkouts with the same folder name never share one);
+`karst where` prints it.
 
 `--no-llm` returns cited code with zero LLM. To add **on-prem** AI answers, point
 karst at a local model and still stay air-gapped:
@@ -91,11 +112,16 @@ Don't trust the attestation — verify it:
 # 2. Physically disconnect the network (or block egress for the user/process).
 # 3. Run the core workflow under your egress monitor (netstat / Little Snitch / eBPF):
 export KARST_OFFLINE=1
-karst index .
+karst quickstart .
 karst ask "where is rate limiting enforced?" --no-llm
-karst impact <some-symbol>
+karst impact --target <some-symbol> --graph-path "$(karst where)/graph.pkl"
 # 4. Confirm: the commands succeed AND your monitor shows ZERO outbound connections.
 ```
+
+karst's own CI runs the same flow on every change: the install-smoke workflow
+runs `quickstart` and `ask` on Linux inside a network namespace with no
+interfaces, with `KARST_OFFLINE=1`, and checks on every OS that the installed
+language pack bundles its grammars.
 
 If you want to be exhaustive, also confirm the package has no HTTP client of its own:
 

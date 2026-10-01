@@ -17,6 +17,7 @@ so nothing touches the internet.
 |------|----------|
 | **Indexing** (parse → chunk → embed → store) | **None.** tree-sitter parsing, local embeddings, a local Qdrant file store, the call graph, and sqlite caches all run on your machine. |
 | **Retrieval** (`search`, `find_impact`, packs) | **None.** It reads the local index. |
+| **Parsing grammars** | **None at runtime.** They're compiled into the `tree-sitter-language-pack` wheel that pip installs (karst pins its 0.13.x line; 1.x would fetch each grammar from GitHub on first use). |
 | **Embedding model** | **One-time download** (~65 MB, a quantized ONNX model) the first time you index, cached under `~/.karst/models`. After that it's offline — and you can pre-seed it for a fully air-gapped box (below). |
 | **The AI answer** (`ask` / `review`) | **Only if you opt in.** Three choices: nothing (`--no-llm`), a **local** model (stays on-prem), or a cloud model (sends *only the retrieved slice*, never the whole repo). |
 
@@ -61,15 +62,20 @@ To run on a machine that never has internet:
 
 1. On an internet-connected machine, run `karst quickstart` once on any repo —
    this populates the model cache at `~/.karst/models`.
-2. Copy that `~/.karst/models` folder to the air-gapped machine (same path).
+2. Install karst on the air-gapped machine from a wheelhouse, and copy that
+   `~/.karst/models` folder over (same path).
+   [AIR-GAP-INSTALL.md](compliance/AIR-GAP-INSTALL.md) has the exact commands. The
+   parsing grammars come inside the wheelhouse; there is nothing else to seed.
 3. On the air-gapped box, force offline mode so nothing is ever fetched:
    ```bash
-   export KARST_OFFLINE=1                # one switch: blocks all model downloads
+   export KARST_OFFLINE=1                # one switch: blocks model and grammar downloads
    export KARST_LLM_PROVIDER=local       # with a local model already pulled
    ```
    `KARST_OFFLINE=1` is shorthand — karst sets `HF_HUB_OFFLINE` and
    `TRANSFORMERS_OFFLINE` for you so the embedder only ever reads the cached
-   model. (You can still set those two directly if you prefer.)
+   model. (You can still set those two directly if you prefer.) It also makes
+   karst refuse to parse rather than download a grammar, in case a
+   `tree-sitter-language-pack` 1.x ever ends up installed.
 
 From there, indexing, retrieval, and AI answers all run with **zero** outbound
 connections.
@@ -82,7 +88,7 @@ connections.
 | `KARST_LLM_MODEL` | model name for answers | `llama3.1` (local) |
 | `KARST_LLM_BASE_URL` | local server endpoint | `http://localhost:11434/v1` |
 | `KARST_LLM_API_KEY` | only if your local server needs one | `local` (dummy) |
-| `KARST_OFFLINE` | air-gap switch: blocks all embedding-model downloads (sets `HF_HUB_OFFLINE` + `TRANSFORMERS_OFFLINE`) | unset |
+| `KARST_OFFLINE` | air-gap switch: blocks embedding-model downloads (sets `HF_HUB_OFFLINE` + `TRANSFORMERS_OFFLINE`) and refuses grammar downloads | unset |
 | `HF_HUB_OFFLINE` | block any model download (air-gap) | unset |
 
 The same flags exist per-command: `karst ask "…" --llm local --model <name>`.
@@ -92,7 +98,8 @@ The same flags exist per-command: `karst ask "…" --llm local --model <name>`.
 Don't take our word for it — this is open source (Apache-2.0) and testable:
 
 - **Read the code:** karst has no `requests`/`httpx`/`urllib` calls of its own —
-  the only outbound paths are the embedding download and the LLM SDK.
+  the only outbound paths are the embedding download and the LLM SDK. Grammars
+  are part of the installed `tree-sitter-language-pack` wheel.
 - **Prove it offline:** after one `karst quickstart` (to cache the model), pull
   the network and run `karst quickstart` + `karst ask "…" --llm local` again on
   another repo. It works with the cable unplugged.

@@ -1,7 +1,7 @@
 # karst — Pre-filled Security Questionnaire
 
 Standard vendor-risk / CAIQ / SIG-style questions with karst's answers for a
-**self-hosted** deployment (karst 0.2.7). Many "vendor" questions are *Not
+**self-hosted** deployment (the first karst release after 0.2.10). Many "vendor" questions are *Not
 Applicable* precisely because there is no vendor cloud — karst runs entirely on
 your infrastructure. Where a control is the customer's responsibility (because the
 software is self-hosted), that's stated plainly.
@@ -25,7 +25,7 @@ software is self-hosted), that's stated plainly.
 | Question | Answer |
 |---|---|
 | Does the software "phone home" / send telemetry? | **No.** No telemetry, analytics, or update pings. (Verifiable in source.) |
-| Required outbound connections for normal operation | **None**, after a one-time local embedding-model cache. With `KARST_OFFLINE=1` and a pre-seeded cache, zero outbound. |
+| Required outbound connections for normal operation | **None**, after a one-time local embedding-model cache. Parsing grammars ship inside the installed wheel, so nothing else is fetched at runtime. With `KARST_OFFLINE=1` and a pre-seeded cache, zero outbound. (karst 0.2.10 and earlier: constrain `tree-sitter-language-pack>=0.13,<1`, see SECURITY.md §3.) |
 | Inbound listeners | Default stdio (no socket). Optional Streamable-HTTP MCP server binds a host/port you choose; protect with `KARST_MCP_TOKEN` and your network controls. |
 | License-server / activation callback | **None.** No activation, no license check. |
 
@@ -43,7 +43,7 @@ software is self-hosted), that's stated plainly.
 | Question | Answer |
 |---|---|
 | License | Apache-2.0 (permissive). |
-| Third-party components | tree-sitter, tree-sitter-language-pack, fastembed (ONNX), qdrant-client, networkx, mcp, unidiff (+ optional anthropic/openai). All mainstream, permissively licensed. |
+| Third-party components | tree-sitter, tree-sitter-language-pack (0.13.x; grammars compiled into the wheel), fastembed (ONNX), qdrant-client, networkx, mcp, unidiff (+ optional anthropic/openai). All mainstream, permissively licensed. |
 | SBOM available? | Yes — generate a CycloneDX SBOM yourself (AIR-GAP-INSTALL.md). |
 | Build/release integrity | Published to PyPI via GitHub Actions Trusted Publishing (OIDC; no stored tokens). Pin version + hashes and mirror internally. |
 | Can we install from our internal mirror? | Yes — it's a standard Python package; vendor a wheelhouse into Artifactory/Nexus. |
@@ -71,6 +71,6 @@ software is self-hosted), that's stated plainly.
 
 ---
 
-*Answers describe karst 0.2.7, self-hosted. Items marked "roadmap" are not present
+*Answers describe the first karst release after 0.2.10, self-hosted. Items marked "roadmap" are not present
 in the current OSS core — verify before relying on them. Contact the maintainer for
 a signed/dated copy against your specific questionnaire template.*

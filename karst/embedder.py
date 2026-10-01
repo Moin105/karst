@@ -23,6 +23,11 @@ DEFAULT_BATCH = 32
 _OFFLINE_TRUTHY = {"1", "true", "yes", "on"}
 
 
+def offline_requested() -> bool:
+    """True when the operator set KARST_OFFLINE (air-gapped mode)."""
+    return os.environ.get("KARST_OFFLINE", "").strip().lower() in _OFFLINE_TRUTHY
+
+
 def _apply_offline_env() -> None:
     """Air-gapped support for `KARST_OFFLINE=1`.
 
@@ -31,7 +36,7 @@ def _apply_offline_env() -> None:
     network. The embedding model must already be cached (see docs/SELF-HOSTED.md
     for how to pre-seed it). Opt-in: does nothing unless KARST_OFFLINE is set.
     """
-    if os.environ.get("KARST_OFFLINE", "").strip().lower() in _OFFLINE_TRUTHY:
+    if offline_requested():
         os.environ.setdefault("HF_HUB_OFFLINE", "1")
         os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
