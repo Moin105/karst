@@ -53,7 +53,7 @@
     --surface: #13131c;
     --text: #f8fafc;
     --text-dim: #94a3b8;
-    --accent: #818cf8;
+    --accent: #cca57a;
     --accent-2: #34d399;
     --border: #1f2937;
     --code-bg: #0f172a;
@@ -72,8 +72,8 @@
   .pill {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 6px 12px; border-radius: 999px;
-    background: rgba(129,140,248,0.08);
-    border: 1px solid rgba(129,140,248,0.25);
+    background: rgba(204,165,122,0.08);
+    border: 1px solid rgba(204,165,122,0.25);
     color: var(--accent); font-size: 12px; letter-spacing: 0.02em;
   }
   .btn-primary {
@@ -87,15 +87,15 @@
     padding: 12px 18px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;
     transition: border-color .15s ease, background .15s ease;
   }
-  .btn-ghost:hover { border-color: var(--accent); background: rgba(129,140,248,0.06); }
+  .btn-ghost:hover { border-color: var(--accent); background: rgba(204,165,122,0.06); }
   .grid-bg {
     background-image:
-      radial-gradient(ellipse at top, rgba(129,140,248,0.08), transparent 60%),
-      linear-gradient(rgba(129,140,248,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(129,140,248,0.04) 1px, transparent 1px);
+      radial-gradient(ellipse at top, rgba(204,165,122,0.08), transparent 60%),
+      linear-gradient(rgba(204,165,122,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(204,165,122,0.04) 1px, transparent 1px);
     background-size: auto, 48px 48px, 48px 48px;
   }
-  .stat-num { color: var(--accent-2); }
+  .stat-num { color: var(--accent); }
   .num-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; }
   .step-num {
     font-family: 'JetBrains Mono', monospace; color: var(--accent);
@@ -114,7 +114,7 @@
   a.link-accent { color: var(--accent); }
   a.link-accent:hover { text-decoration: underline; }
   .doc-card { display: block; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
-  .doc-card:hover { border-color: var(--accent); background: rgba(129,140,248,0.05); transform: translateY(-2px); }
+  .doc-card:hover { border-color: var(--accent); background: rgba(204,165,122,0.05); transform: translateY(-2px); }
   /* Header nav — fully self-contained responsive, so it works even before (or
      without) the Tailwind CDN loading. Mobile-first: burger shown, desktop nav
      hidden; flipped at >=640px. */
@@ -136,11 +136,11 @@
   "@type": "SoftwareApplication",
   "name": "karst",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "macOS, Linux, Windows (WSL)",
+  "operatingSystem": "macOS, Linux, Windows",
   "description": "Local, MCP-native code context for AI coding agents: cited answers plus blast-radius impact analysis (what a change breaks). Runs 100% on your machine.",
   "url": "https://upgraded-garbanzo-roan.vercel.app/",
   "downloadUrl": "https://pypi.org/project/karst/",
-  "softwareVersion": "0.2.9",
+  "softwareVersion": "0.2.10",
   "license": "https://www.apache.org/licenses/LICENSE-2.0",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 }
@@ -151,26 +151,11 @@
 <!-- Logo SVG (reused inline below) -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <symbol id="karst-logo" viewBox="0 0 64 64">
-<defs>
-<pattern id="ksStoneL" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#cca57a"/><circle cx="1.5" cy="2" r="0.7" fill="#a3744a"/><circle cx="4.6" cy="4.4" r="0.6" fill="#a3744a"/><circle cx="3.2" cy="0.8" r="0.4" fill="#e6cca0"/><path d="M0 6L6 0" stroke="#a3744a" stroke-width="0.35" opacity="0.5"/></pattern>
-<pattern id="ksStoneM" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#b9895c"/><circle cx="2" cy="1.6" r="0.7" fill="#8f6840"/><circle cx="4.8" cy="4" r="0.6" fill="#8f6840"/><circle cx="1" cy="4.6" r="0.4" fill="#cca57a"/><path d="M0 6L6 0" stroke="#8f6840" stroke-width="0.35" opacity="0.5"/></pattern>
-<pattern id="ksStoneD" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#8f6840"/><circle cx="1.6" cy="2.2" r="0.7" fill="#5c4226"/><circle cx="4.4" cy="4.6" r="0.6" fill="#5c4226"/><circle cx="3" cy="1" r="0.4" fill="#b9895c"/><path d="M0 6L6 0" stroke="#5c4226" stroke-width="0.35" opacity="0.5"/></pattern>
-</defs>
-<path d="M26 55L21 62M38 55L43 62" fill="none" stroke="#3a2a18" stroke-width="5" stroke-linecap="round"/>
-<path d="M26 55L21 62M38 55L43 62" fill="none" stroke="#a3744a" stroke-width="3" stroke-linecap="round"/>
-<path d="M22 36L12 24L8 13M42 36L52 24L56 13" fill="none" stroke="#3a2a18" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 13L5 8M8 13L11 8M56 13L53 8M56 13L59 8" fill="none" stroke="#3a2a18" stroke-width="3" stroke-linecap="round"/>
-<path d="M22 36L12 24L8 13M42 36L52 24L56 13" fill="none" stroke="#b9895c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-<polygon points="32,28 18,38 24,56 32,52" fill="url(#ksStoneM)"/>
-<polygon points="32,28 46,38 40,56 32,52" fill="url(#ksStoneD)"/>
-<polygon points="24,33 32,28 40,33 32,38" fill="url(#ksStoneL)"/>
-<polygon points="32,28 46,38 40,56 24,56 18,38" fill="none" stroke="#3a2a18" stroke-width="1.2" stroke-linejoin="round"/>
-<line x1="32" y1="38" x2="32" y2="52" stroke="#3a2a18" stroke-width="0.8"/>
-<circle cx="12" cy="24" r="1.7" fill="#34d399"/>
-<circle cx="52" cy="24" r="1.7" fill="#34d399"/>
-<circle cx="32" cy="42" r="2.7" fill="#34d399"/>
-<circle cx="31.1" cy="41.1" r="0.9" fill="#d1fae5"/>
+    <symbol id="karst-logo" viewBox="7 9 34 30">
+  <rect x="8" y="11" width="32" height="6" rx="1" fill="#CCA57A"/>
+  <rect x="16" y="21" width="24" height="6" rx="1" fill="#B9895C"/>
+  <rect x="8" y="31" width="32" height="6" rx="1" fill="#8F6840"/>
+  <circle cx="10.5" cy="24" r="3.2" fill="#34D399"/>
 </symbol>
   </defs>
 </svg>
@@ -189,6 +174,7 @@
       <a href="#guides" class="hover:text-white">Guides</a>
       <a href="#teams" class="hover:text-white">Teams</a>
       <a href="https://pypi.org/project/karst/" class="hover:text-white">PyPI</a>
+      <a href="https://github.com/Moin105/karst" class="hover:text-white">GitHub</a>
     </nav>
     <!-- mobile hamburger -->
     <label for="nav-toggle" class="nav-burger" role="button" aria-label="Toggle menu" tabindex="0" style="cursor:pointer;padding:8px;margin-right:-8px;color:var(--text-dim)">
@@ -202,6 +188,7 @@
     <a href="#guides" class="hover:text-white">Guides</a>
       <a href="#teams" class="hover:text-white">Teams</a>
     <a href="https://pypi.org/project/karst/" class="hover:text-white">PyPI</a>
+    <a href="https://github.com/Moin105/karst" class="hover:text-white">GitHub</a>
   </nav>
 </header>
 
@@ -233,7 +220,7 @@
       <a href="/guides/CONNECT.html" class="link-accent">Claude, Windsurf, Zed &amp; more</a>
     </p>
     <p class="mt-5 text-sm text-dim">
-      🔒 Regulated or air-gapped team? karst runs fully offline, with no telemetry and source you can audit —
+      Regulated or air-gapped team? karst runs fully offline, with no telemetry and source you can audit —
       <a href="/guides/SELF-HOSTED.html" class="link-accent">deploy it inside your perimeter &rarr;</a>
     </p>
   </div>
@@ -260,7 +247,7 @@
 <!-- How it works -->
 <section id="how" class="max-w-6xl mx-auto px-5 py-20">
   <h2 class="text-3xl font-semibold tracking-tight">How it works</h2>
-  <p class="text-dim mt-2 max-w-2xl">Three steps. No vector DB to babysit, no embeddings drift, no surprise bills.
+  <p class="text-dim mt-2 max-w-2xl">Three steps, all on your machine &mdash; the index is plain local files, so there's no server or Docker to babysit, and no surprise bills.
     <a href="/how-it-works.html" class="link-accent whitespace-nowrap">See the interactive walkthrough &rarr;</a>
   </p>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
@@ -269,8 +256,8 @@
       <h3 class="text-lg font-semibold mt-3">Parse the repo</h3>
       <p class="text-dim mt-2 text-sm leading-relaxed">
         karst walks your tree, parses each file with tree-sitter, and writes a content-addressed
-        index of symbols, calls, and imports. The first pass takes 343s on a 2M-line repo;
-        subsequent runs are 2.3s because only changed blobs are re-parsed.
+        index of symbols, calls, and imports. On a 246-file NestJS + Next.js repo the first pass
+        took 343s; re-indexing took 2.3s, because only changed files are re-parsed.
       </p>
     </div>
     <div class="surface rounded-xl p-6">
@@ -287,8 +274,8 @@
       <div class="step-num">03 / SERVE</div>
       <h3 class="text-lg font-semibold mt-3">Serve over MCP</h3>
       <p class="text-dim mt-2 text-sm leading-relaxed">
-        karst exposes packs as MCP resources. Claude Desktop, Cursor, and any MCP client can pull
-        just the pack they need &mdash; 60% fewer tokens than dumping raw files, with the cost
+        karst serves cited, pack-scoped context through five MCP tools (<span class="mono">search_code</span>,
+        <span class="mono">find_impact</span>, &hellip;). Claude, Cursor, and any MCP client pull just the slice they need &mdash; 60% fewer tokens than dumping raw files, with the cost
         estimated up front and the <em>real</em> per-model token spend printed after each answer.
       </p>
     </div>
@@ -298,7 +285,7 @@
 <!-- Install -->
 <section id="install" class="max-w-6xl mx-auto px-5 pb-20">
   <h2 class="text-3xl font-semibold tracking-tight">Install in 60 seconds</h2>
-  <p class="text-dim mt-2 max-w-2xl">Python 3.10+. Works on macOS, Linux, WSL.</p>
+  <p class="text-dim mt-2 max-w-2xl">Python 3.10+. Works on macOS, Linux, and Windows.</p>
   <div class="code-bg rounded-xl mt-6 p-5 mono text-sm overflow-x-auto border border-default">
 <pre class="text-slate-200"><span class="text-dim"># 1. install  (or: uv tool install karst)</span>
 pip install karst
@@ -511,6 +498,7 @@ karst ask <span class="accent-2">"How does auth work?"</span></pre>
       <span>karst &middot; Apache 2.0</span>
     </div>
     <div class="flex items-center gap-5">
+      <a href="https://github.com/Moin105/karst" class="hover:text-white">GitHub</a>
       <a href="https://pypi.org/project/karst/" class="hover:text-white">PyPI</a>
       <a href="/guides/WHY.html" class="hover:text-white">Guides</a>
       <a href="mailto:karst.support@gmail.com" class="hover:text-white">karst.support@gmail.com</a>
@@ -603,7 +591,7 @@ karst ask <span class="accent-2">"How does auth work?"</span></pre>
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error('bad status');
-        setMsg('Thanks — your message is on its way. 🎉', true);
+        setMsg('Thanks — your message is on its way.', true);
         form.reset();
       } catch (err) {
         setMsg('Something went wrong. Email karst.support@gmail.com instead?', false);
@@ -650,7 +638,7 @@ karst ask <span class="accent-2">"How does auth work?"</span></pre>
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error('bad status');
-        setMsg('Thanks — we’ll get back to you with a quote. 🎉', true);
+        setMsg('Thanks — we’ll get back to you with a quote.', true);
         form.reset();
       } catch (err) {
         setMsg('Something went wrong. Email karst.support@gmail.com instead?', false);

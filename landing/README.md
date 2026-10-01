@@ -29,6 +29,8 @@ Files in this folder:
 | `index.html`      | The whole page. Inline SVG logo, inline JS for the waitlist form.  |
 | `og-image.png`    | 1200x630 OG/Twitter card image (the one referenced in meta tags).  |
 | `og-image.svg`    | Editable source for `og-image.png`. Re-export to PNG after edits.  |
+| `brand/`          | Logo files: mark for dark / light backgrounds, one-colour mark, lockup. |
+| `favicon*`        | SVG favicon plus pixel-aligned 16/32px PNGs and the Apple touch icon. |
 | `robots.txt`      | Allow all crawlers.                                                |
 | `vercel.json`     | Clean URLs + security headers (X-Frame-Options, Referrer-Policy).  |
 | `package.json`    | Marks the folder as a project so Vercel auto-detects it. No deps.  |

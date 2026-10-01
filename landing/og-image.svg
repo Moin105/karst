@@ -1,45 +1,59 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
-  <defs>
-    <radialGradient id="bgGlow" cx="20%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="#1a1a2e" stop-opacity="1" />
-      <stop offset="100%" stop-color="#0a0a0f" stop-opacity="1" />
-    </radialGradient>
-    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
-      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.6" />
-    </pattern>
-    <pattern id="ksStoneL" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#cca57a"/><circle cx="1.5" cy="2" r="0.7" fill="#a3744a"/><circle cx="4.6" cy="4.4" r="0.6" fill="#a3744a"/><circle cx="3.2" cy="0.8" r="0.4" fill="#e6cca0"/><path d="M0 6L6 0" stroke="#a3744a" stroke-width="0.35" opacity="0.5"/></pattern>
-    <pattern id="ksStoneM" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#b9895c"/><circle cx="2" cy="1.6" r="0.7" fill="#8f6840"/><circle cx="4.8" cy="4" r="0.6" fill="#8f6840"/><circle cx="1" cy="4.6" r="0.4" fill="#cca57a"/><path d="M0 6L6 0" stroke="#8f6840" stroke-width="0.35" opacity="0.5"/></pattern>
-    <pattern id="ksStoneD" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#8f6840"/><circle cx="1.6" cy="2.2" r="0.7" fill="#5c4226"/><circle cx="4.4" cy="4.6" r="0.6" fill="#5c4226"/><circle cx="3" cy="1" r="0.4" fill="#b9895c"/><path d="M0 6L6 0" stroke="#5c4226" stroke-width="0.35" opacity="0.5"/></pattern>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Editable source for og-image.png (1200x630). Re-render the PNG after edits. -->
+  <rect width="1200" height="630" fill="#0A0A0F"/>
 
-  <!-- Background -->
-  <rect width="1200" height="630" fill="url(#bgGlow)" />
-  <rect width="1200" height="630" fill="url(#grid)" />
-
-  <!-- Left: karst rock-creature mark (faceted, patterned stone) -->
-  <g transform="translate(70, 170) scale(4)">
-    <path d="M26 55L21 62M38 55L43 62" fill="none" stroke="#3a2a18" stroke-width="5" stroke-linecap="round"/>
-    <path d="M26 55L21 62M38 55L43 62" fill="none" stroke="#a3744a" stroke-width="3" stroke-linecap="round"/>
-    <path d="M22 36L12 24L8 13M42 36L52 24L56 13" fill="none" stroke="#3a2a18" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M8 13L5 8M8 13L11 8M56 13L53 8M56 13L59 8" fill="none" stroke="#3a2a18" stroke-width="3" stroke-linecap="round"/>
-    <path d="M22 36L12 24L8 13M42 36L52 24L56 13" fill="none" stroke="#b9895c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <polygon points="32,28 18,38 24,56 32,52" fill="url(#ksStoneM)"/>
-    <polygon points="32,28 46,38 40,56 32,52" fill="url(#ksStoneD)"/>
-    <polygon points="24,33 32,28 40,33 32,38" fill="url(#ksStoneL)"/>
-    <polygon points="32,28 46,38 40,56 24,56 18,38" fill="none" stroke="#3a2a18" stroke-width="1.2" stroke-linejoin="round"/>
-    <line x1="32" y1="38" x2="32" y2="52" stroke="#3a2a18" stroke-width="0.8"/>
-    <circle cx="12" cy="24" r="1.7" fill="#34d399"/>
-    <circle cx="52" cy="24" r="1.7" fill="#34d399"/>
-    <circle cx="32" cy="42" r="2.7" fill="#34d399"/>
-    <circle cx="31.1" cy="41.1" r="0.9" fill="#d1fae5"/>
+  <!-- faint strata along the bottom edge -->
+  <g fill="#CCA57A" opacity="0.07">
+    <rect x="0" y="588" width="1200" height="8"/>
+    <rect x="180" y="604" width="1020" height="8"/>
+    <rect x="0" y="620" width="1200" height="10"/>
   </g>
 
-  <!-- Right: wordmark + tagline -->
-  <g transform="translate(440, 0)" font-family="Inter, system-ui, sans-serif" fill="#f8fafc">
-    <text x="0" y="280" font-size="128" font-weight="700" letter-spacing="-2">karst</text>
-    <text x="6" y="350" font-size="36" font-weight="500" fill="#94a3b8">code context for AI dev tools</text>
-    <g transform="translate(6, 400)" font-family="JetBrains Mono, ui-monospace, monospace" font-size="22" fill="#818cf8">
-      <text x="0" y="0">MCP-native &#183; Apache 2.0 &#183; Self-hosted</text>
+  <!-- lockup -->
+  <g transform="translate(58 46) scale(2.2)">
+    <rect x="8" y="11" width="32" height="6" rx="1" fill="#CCA57A"/>
+    <rect x="16" y="21" width="24" height="6" rx="1" fill="#B9895C"/>
+    <rect x="8" y="31" width="32" height="6" rx="1" fill="#8F6840"/>
+    <circle cx="10.5" cy="24" r="3.2" fill="#34D399"/>
+  </g>
+  <text x="166" y="118" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="44" font-weight="500" fill="#F8FAFC">karst</text>
+
+  <!-- headline + sub -->
+  <g font-family="Inter, system-ui, sans-serif" fill="#F8FAFC">
+    <text x="72" y="262" font-size="66" font-weight="600" letter-spacing="-1.5">Know what your</text>
+    <text x="72" y="340" font-size="66" font-weight="600" letter-spacing="-1.5">change breaks.</text>
+  </g>
+  <g font-family="Inter, system-ui, sans-serif" font-size="25" fill="#94A3B8">
+    <text x="72" y="412">Private code intelligence for AI agents.</text>
+    <text x="72" y="448">Cited answers + blast radius. 100% local.</text>
+  </g>
+
+  <!-- footer -->
+  <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="20">
+    <text x="72" y="548" fill="#CCA57A">pip install karst</text>
+    <text x="300" y="548" fill="#4B5563">·</text>
+    <text x="324" y="548" fill="#94A3B8">Apache-2.0</text>
+    <text x="460" y="548" fill="#4B5563">·</text>
+    <text x="484" y="548" fill="#94A3B8">github.com/Moin105/karst</text>
+  </g>
+
+  <!-- terminal card: real `karst impact` output -->
+  <g transform="translate(700 176)">
+    <rect width="428" height="300" rx="12" fill="#13131C" stroke="#1F2937" stroke-width="1.5"/>
+    <circle cx="24" cy="24" r="5" fill="#2A2A35"/>
+    <circle cx="42" cy="24" r="5" fill="#2A2A35"/>
+    <circle cx="60" cy="24" r="5" fill="#2A2A35"/>
+    <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="17">
+      <text x="24" y="74"><tspan fill="#34D399">$</tspan><tspan fill="#E5E7EB"> karst impact --target get_user</tspan></text>
+      <text x="24" y="112" fill="#E5E7EB" xml:space="preserve">Affected: 5   Risk: <tspan fill="#CCA57A">MEDIUM</tspan></text>
+      <text x="24" y="160" fill="#E5E7EB">auth.py::login</text>
+      <text x="404" y="160" fill="#6B7280" text-anchor="end">auth.py:6-10</text>
+      <text x="24" y="194" fill="#E5E7EB">billing.py::charge</text>
+      <text x="404" y="194" fill="#6B7280" text-anchor="end">billing.py:6-10</text>
+      <text x="24" y="228" fill="#9CA3AF">users.py</text>
+      <text x="404" y="228" fill="#6B7280" text-anchor="end">contains</text>
+      <text x="24" y="262" fill="#9CA3AF">auth.py, billing.py</text>
+      <text x="404" y="262" fill="#6B7280" text-anchor="end">imports</text>
     </g>
   </g>
 </svg>
