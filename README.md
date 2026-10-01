@@ -66,10 +66,10 @@ karst ask "how does checkout charge the user?" --no-llm    # cited code, no API 
 karst ask -i                     # interactive: ask many questions
 
 # what breaks if I change a function?
-karst impact --target checkout --graph-path ~/.karst/indexes/your-project/graph.pkl
+karst impact --target checkout --graph-path "$(karst where)/graph.pkl"
 
 # review a diff with severity-tagged, cited findings
-karst review --staged --storage ~/.karst/indexes/your-project
+karst review --staged --storage "$(karst where)"
 
 karst examples                   # a copy-paste cheatsheet of everything
 ```

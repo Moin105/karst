@@ -8,12 +8,12 @@ helps* so you know what you're buying.
 [QUICKSTART.md](QUICKSTART.md)). That builds the index + graph and prints your
 storage path. Without it, `ask`/`impact` exit with "no index found".
 
-Throughout, **`S` = your index path** — the one quickstart printed, which is
-`~/.karst/indexes/<your-folder-name>`. The snippets below use `S` as a shell
-variable, so set it once and they run as written:
+Throughout, **`S` = your index path** — the one quickstart printed
+(`~/.karst/indexes/<your-folder-name>-<id>`). The snippets below use `S` as a
+shell variable, so set it once and they run as written:
 
 ```bash
-export S=~/.karst/indexes/myapp        # replace myapp with your folder name
+export S="$(karst where ./myapp)"      # or just $(karst where) inside the folder
 ```
 
 > Shortcut: if you `cd` into the project folder, you can **omit `--storage`

@@ -4,6 +4,7 @@ Subcommands:
     karst analyze <path>          # walk + parse + chunk (no storage)
     karst index <path>            # full ingestion → Qdrant
     karst ask <question>          # Q&A over an indexed repo
+    karst where [path]            # print a repo's index directory
 """
 
 from __future__ import annotations
@@ -26,17 +27,9 @@ from .llm import DEFAULT_ANTHROPIC_MODEL, DEFAULT_OPENAI_MODEL, LLMNotConfigured
 from .packs_cli import add_packs_subparser
 from .review_cli import add_review_subparser
 from .state import clear_attached, load_state
+from .storage import storage_for, unclaimed_legacy_storage
 from .store import DEFAULT_COLLECTION
 from .tokens import estimate_cost
-
-
-# Default per-user storage path. Each repo gets its own subdirectory so two
-# projects don't share an index. Phase 1 keeps this in the home dir; in
-# production §34 calls for per-tenant Qdrant collections.
-def _default_storage(path: Path) -> Path:
-    base = Path.home() / ".karst" / "indexes"
-    slug = path.resolve().name or "root"
-    return base / slug
 
 
 def _default_cache_dir() -> Path:
@@ -100,7 +93,7 @@ def _cmd_index(args: argparse.Namespace) -> int:
         print(f"error: not a directory: {root}", file=sys.stderr)
         return 2
 
-    storage = Path(args.storage) if args.storage else _default_storage(root)
+    storage = Path(args.storage) if args.storage else storage_for(root, for_write=True)
     cache = Path(args.embedder_cache) if args.embedder_cache else _default_cache_dir()
 
     print(f"Indexing:        {root.resolve()}", file=sys.stderr)
@@ -277,7 +270,7 @@ def _answer_once(
 def _cmd_ask(args: argparse.Namespace) -> int:
     # Default to the current folder's index (same convention as `index` /
     # `quickstart`), so `cd project && karst ask "…"` works without --storage.
-    storage = Path(args.storage) if args.storage else _default_storage(Path("."))
+    storage = Path(args.storage) if args.storage else storage_for(Path("."))
     if not storage.exists():
         print(
             f"error: no index found at {storage}.\n"
@@ -285,6 +278,14 @@ def _cmd_ask(args: argparse.Namespace) -> int:
             "or pass --storage <path>.",
             file=sys.stderr,
         )
+        legacy = None if args.storage else unclaimed_legacy_storage(Path("."))
+        if legacy is not None:
+            print(
+                f"note: {legacy} was built by an older karst and doesn't record "
+                "which checkout it came from, so it isn't searched. `karst index` "
+                "reuses it if it matches this folder (an incremental refresh).",
+                file=sys.stderr,
+            )
         return 2
 
     cache = Path(args.embedder_cache) if args.embedder_cache else _default_cache_dir()
@@ -426,7 +427,7 @@ def _cmd_quickstart(args: argparse.Namespace) -> int:
     if not root.is_dir():
         print(f"error: not a directory: {root}", file=sys.stderr)
         return 2
-    storage = Path(args.storage) if args.storage else _default_storage(root)
+    storage = Path(args.storage) if args.storage else storage_for(root, for_write=True)
 
     print(
         f"\n▸ karst quickstart — getting '{root.resolve().name}' ready to explore\n",
@@ -476,7 +477,8 @@ karst — things to try
 One-time setup on any repo (index + graph + packs):
   karst quickstart ./my-repo
 
-Explore (S = the storage path quickstart prints, e.g. ~/.karst/indexes/my-repo):
+Explore (S = the storage path quickstart prints; get it any time with
+`S=$(karst where ./my-repo)`):
   karst ask "where is auth handled?" --storage S --no-llm   # cited chunks, no key
   karst ask "summarize the checkout flow" --storage S       # LLM answer (needs API key)
   karst ask -i --storage S                                  # interactive: ask many questions
@@ -508,6 +510,21 @@ Tip: every command supports --help, e.g. `karst ask --help`.
 
 def _cmd_examples(args: argparse.Namespace) -> int:
     print(_EXAMPLES)
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+# where  (the index directory for a repo)
+# --------------------------------------------------------------------------- #
+
+def _cmd_where(args: argparse.Namespace) -> int:
+    root = Path(args.path)
+    if not root.is_dir():
+        print(f"error: not a directory: {root}", file=sys.stderr)
+        return 2
+    # Same answer `karst index` / `quickstart` would act on, so scripts can do
+    # S=$(karst where) before or after indexing.
+    print(storage_for(root, for_write=True))
     return 0
 
 
@@ -545,7 +562,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ingest a repo into the Qdrant vector store (walk -> parse -> chunk -> embed -> upsert).",
     )
     p_index.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
-    p_index.add_argument("--storage", help="Qdrant local-storage path (default: ~/.karst/indexes/<repo>).")
+    p_index.add_argument(
+        "--storage",
+        help="Qdrant local-storage path (default: ~/.karst/indexes/<repo>-<id>; see `karst where`).",
+    )
     p_index.add_argument("--collection", default=DEFAULT_COLLECTION)
     p_index.add_argument("--embedding-model", default=DEFAULT_MODEL)
     p_index.add_argument("--embedder-cache", help="Where to cache the embedding model weights.")
@@ -619,13 +639,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="One command to get a repo ready: index + graph + suggested packs, then prints what to try.",
     )
     p_qs.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
-    p_qs.add_argument("--storage", help="Storage path (default: ~/.karst/indexes/<repo>).")
+    p_qs.add_argument(
+        "--storage",
+        help="Storage path (default: ~/.karst/indexes/<repo>-<id>; see `karst where`).",
+    )
     p_qs.add_argument("--full", action="store_true", help="Force a full re-index (ignore the SHA manifest).")
     p_qs.set_defaults(func=_cmd_quickstart)
 
     # examples — a copy-paste cheatsheet of things to try
     p_ex = sub.add_parser("examples", help="Print a cheatsheet of useful commands and questions to try.")
     p_ex.set_defaults(func=_cmd_examples)
+
+    # where — the index directory for a repo
+    p_where = sub.add_parser(
+        "where",
+        help="Print the index directory karst uses for a repo (e.g. S=$(karst where)).",
+    )
+    p_where.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
+    p_where.set_defaults(func=_cmd_where)
 
     # review
     add_review_subparser(sub)

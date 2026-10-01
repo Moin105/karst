@@ -51,7 +51,9 @@ When it finishes it prints exactly what to try next, with your storage path
 filled in.
 
 > **Where does it put things?** Everything lands in
-> `~/.karst/indexes/<your-project>/`. Your code never leaves your machine.
+> `~/.karst/indexes/<your-project>-<id>/` (the id comes from the folder's full
+> path, so two projects with the same folder name never share an index).
+> `karst where` prints the exact path. Your code never leaves your machine.
 
 ## 3. Ask a question — free, no API key
 
@@ -110,11 +112,11 @@ karst ask -i
 This is the part embeddings alone can't do. Ask karst what depends on a symbol.
 `impact` needs the path to the graph that quickstart built — that's
 `<your-index>/graph.pkl`, where `<your-index>` is the storage path quickstart
-printed at the end of step 2 (it's `~/.karst/indexes/<your-folder-name>`). For a
-project folder named `myapp`:
+printed at the end of step 2. `karst where` prints it too, so from inside the
+project folder:
 
 ```bash
-karst impact --target search --graph-path ~/.karst/indexes/myapp/graph.pkl
+karst impact --target search --graph-path "$(karst where)/graph.pkl"
 ```
 
 ```text

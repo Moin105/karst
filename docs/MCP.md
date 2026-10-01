@@ -42,12 +42,13 @@ The MCP tools read a prebuilt index. Build it once per repo:
 karst index /path/to/your-repo
 # optional but recommended — enables find_impact and pack scoping:
 karst graph-index /path/to/your-repo
-karst packs --storage ~/.karst/indexes/your-repo \
+karst packs --storage "$(karst where /path/to/your-repo)" \
   suggest /path/to/your-repo --apply --retag
 ```
 
-> The `--storage` folder is the **basename of the repo path**: indexing
-> `/path/to/myapp` stores it at `~/.karst/indexes/myapp` (the two must match).
+> The index for `/path/to/myapp` lives at `~/.karst/indexes/myapp-<id>`, where
+> `<id>` is derived from the repo's absolute path, so two repos that share a
+> folder name never share an index. `karst where /path/to/myapp` prints it.
 > Simpler: run `karst quickstart /path/to/your-repo`, which does all three steps
 > and prints the exact storage path.
 
@@ -117,8 +118,8 @@ when useful. Examples that trigger them:
   → `find_impact` returns the blast radius from the call graph.
 - *"What context packs exist for this repo?"* → `list_packs`.
 
-You can always pass the repo's absolute path; the tools resolve the index from
-`~/.karst/indexes/<repo-name>`.
+You can always pass the repo's absolute path; the tools resolve it to the same
+`~/.karst/indexes/<repo-name>-<id>` directory that `karst index` writes.
 
 ---
 
@@ -166,7 +167,7 @@ karst-mcp --http                  # host 0.0.0.0, port $PORT or 8080
   honored, so it deploys as-is to Fly / Render / Railway.
 
 **Important:** the server reads indexes from its **own disk**
-(`~/.karst/indexes/<repo>`). A hosted server can't see your laptop's files — so
+(`~/.karst/indexes/<repo>-<id>`). A hosted server can't see your laptop's files — so
 index the repos **on the server** (run `karst index` / `karst quickstart` there,
 or mount a volume that has them).
 

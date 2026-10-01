@@ -57,7 +57,7 @@ jobs:
           karst quickstart .
           karst ask "how does charging a user work?" --no-llm 2>&1 | tee ask.txt
           grep -q "billing.py:" ask.txt
-          karst impact --target get_user --graph-path "$HOME/.karst/indexes/sample-repo/graph.pkl" 2>&1 | tee impact.txt
+          karst impact --target get_user --graph-path "$(karst where)/graph.pkl" 2>&1 | tee impact.txt
           grep -Eq "charge|login" impact.txt
 
       - name: MCP server — stdio handshake, search, impact

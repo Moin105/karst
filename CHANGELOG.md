@@ -2,6 +2,23 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## Unreleased
+
+- **Repos that share a folder name no longer share an index.** Indexes were
+  keyed by folder name alone, so `/work/clientA/api` and `/work/clientB/api`
+  both used `~/.karst/indexes/api`: indexing one replaced the other's chunks,
+  and a search over A could return B's code. Each checkout now gets
+  `~/.karst/indexes/<name>-<id>`, where `<id>` is a short hash of its absolute
+  path. The CLI and the MCP server resolve it through one helper
+  (`karst/storage.py`), and `manifest.json` now records the indexed root.
+- **Existing indexes keep working.** An old `~/.karst/indexes/<name>` dir doesn't
+  record which checkout built it, so it isn't searched until the next
+  `karst index` / `quickstart` / `index_repository` adopts it. That happens when
+  at least half its files are unchanged in this checkout, and the refresh is
+  incremental. Otherwise the checkout gets a fresh dir. `ask` and the MCP tools
+  say so when they find an old dir that hasn't been adopted.
+- New **`karst where [path]`** prints a repo's index directory, e.g.
+  `karst impact --target X --graph-path "$(karst where)/graph.pkl"`.
 ## 0.2.10
 
 **Fresh installs work again.** A clean `pip install karst` had started pulling
