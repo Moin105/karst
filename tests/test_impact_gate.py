@@ -66,7 +66,7 @@ def graph_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     repo = base / "repo"
     (repo / "httpx").mkdir(parents=True)
     shutil.copy(FIXTURE, repo / CLIENT)
-    return build_graph(repo, base / "graph.pkl")
+    return build_graph(repo, base / "graph.json")
 
 
 @pytest.fixture
@@ -260,7 +260,7 @@ def _top_callers(reason: str) -> tuple[list[str], int]:
 
 def test_top_callers_rank_non_test_code_before_tests(gate: Gate, repo: Path, tmp_path: Path) -> None:
     # Six tests call _merge_url directly (depth 1). Five non-test callers sit at depth 1-3.
-    graph = _with_tests(repo, tmp_path / "x.pkl", 6, '_merge_url("/")')
+    graph = _with_tests(repo, tmp_path / "x.json", 6, '_merge_url("/")')
     proc = gate.run(
         gate.edit("        return self._base_url + url", "        return self._base_url + '/' + url"),
         KARST_GATE_ASK_AT="MEDIUM", KARST_GRAPH_PATH=str(graph),
@@ -280,7 +280,7 @@ def test_top_callers_rank_non_test_code_before_tests(gate: Gate, repo: Path, tmp
 
 def test_top_callers_fill_with_tests_when_few_non_test_callers(gate: Gate, repo: Path, tmp_path: Path) -> None:
     # Client.request has two non-test callers (get, post). Four tests also call it.
-    graph = _with_tests(repo, tmp_path / "y.pkl", 4, 'request("GET", "/")')
+    graph = _with_tests(repo, tmp_path / "y.json", 4, 'request("GET", "/")')
     proc = gate.run(
         gate.edit("        request = self.build_request(method, url)\n        return self.send(request)",
                   "        request = self.build_request(method, url)\n        return self.send(request)  # edited"),
@@ -358,7 +358,7 @@ def test_ask_when_karst_output_is_unparseable(gate: Gate, tmp_path: Path) -> Non
 
 
 def test_ask_when_graph_file_is_missing(gate: Gate, tmp_path: Path) -> None:
-    missing = tmp_path / "nope" / "graph.pkl"
+    missing = tmp_path / "nope" / "graph.json"
     proc = gate.run(
         gate.edit("return self._base_url + url", "return self._base_url + '/' + url"),
         KARST_GRAPH_PATH=str(missing),
@@ -375,8 +375,37 @@ def test_ask_when_default_graph_location_is_empty(gate: Gate, tmp_path: Path) ->
         KARST_GRAPH_PATH=None, HOME=str(home), USERPROFILE=str(home),
     )
     reason = reason_of(proc)
-    expected = home / ".karst" / "indexes" / gate.repo.name / "graph.pkl"
+    from karst.paths import repo_index_key
+
+    expected = home / ".karst" / "indexes" / repo_index_key(gate.repo) / "graph.json"
     assert str(expected) in reason
+    assert "old-format" not in reason
+
+
+def test_ask_names_a_legacy_pickle_graph_but_never_uses_it(gate: Gate, tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    legacy = home / ".karst" / "indexes" / gate.repo.name / "graph.pkl"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_bytes(b"\x80\x05not really a pickle")
+    proc = gate.run(
+        gate.edit("return self._base_url + url", "return self._base_url + '/' + url"),
+        KARST_GRAPH_PATH=None, HOME=str(home), USERPROFILE=str(home),
+    )
+    reason = reason_of(proc)
+    assert "old-format graph" in reason and str(legacy) in reason
+    assert "graph-index" in reason
+
+
+def test_ask_when_graph_override_is_a_legacy_pickle(gate: Gate, tmp_path: Path) -> None:
+    legacy = tmp_path / "old" / "graph.pkl"
+    legacy.parent.mkdir()
+    legacy.write_bytes(b"\x80\x05not really a pickle")
+    proc = gate.run(
+        gate.edit("return self._base_url + url", "return self._base_url + '/' + url"),
+        KARST_GRAPH_PATH=str(legacy),
+    )
+    reason = reason_of(proc)
+    assert "old pickle format" in reason and "graph-index" in reason
 
 
 def test_ask_on_unparseable_stdin(gate: Gate) -> None:
@@ -529,9 +558,46 @@ def test_pick_symbols_chooses_the_innermost_chunk(mod) -> None:
 
 
 def test_default_graph_path_mirrors_graph_index(mod, tmp_path: Path, monkeypatch) -> None:
+    import hashlib
+
     monkeypatch.setattr(mod.Path, "home", classmethod(lambda cls: tmp_path))
-    got = Path(mod.default_graph_path(str(tmp_path / "work" / "myrepo")))
-    assert got == tmp_path / ".karst" / "indexes" / "myrepo" / "graph.pkl"
+    repo = tmp_path / "work" / "myrepo"
+    repo.mkdir(parents=True)
+    got = Path(mod.default_graph_path(str(repo)))
+    real = os.path.realpath(str(repo))
+    digest = hashlib.sha256(os.fsencode(os.path.normcase(real))).hexdigest()[:12]
+    assert got == tmp_path / ".karst" / "indexes" / f"myrepo-{digest}" / "graph.json"
+
+
+def _spellings(repo: Path) -> list[str]:
+    """Different ways to write the same existing directory on this OS."""
+    s = str(repo)
+    out = [s, s + os.sep, str(repo / "sub" / ".."), str(repo / ".")]
+    if os.name == "nt":
+        out += [s.upper(), s.lower(), s.replace("\\", "/"), s.swapcase()]
+    return out
+
+
+def test_gate_graph_path_equals_karst_helper(mod, tmp_path: Path, monkeypatch) -> None:
+    """The gate copies karst.paths' formula (it must not import karst). They
+    must agree for every spelling of a path, including Windows case changes."""
+    from karst import paths as karst_paths
+
+    monkeypatch.setattr(mod.Path, "home", classmethod(lambda cls: tmp_path / "home"))
+    a = tmp_path / "one" / "Repo"
+    b = tmp_path / "two" / "Repo"
+    for d in (a, b):
+        (d / "sub").mkdir(parents=True)
+    for repo in (a, b, tmp_path):
+        expected = str(karst_paths.default_graph_path(repo))
+        assert expected.startswith(str(tmp_path / "home" / ".karst" / "indexes"))
+        for spelling in _spellings(repo):
+            assert mod.default_graph_path(spelling) == str(karst_paths.default_graph_path(spelling)), spelling
+            # Every spelling of the same directory lands on the same graph.
+            assert mod.default_graph_path(spelling) == expected, spelling
+    # Same folder name in different parents: different graphs.
+    assert mod.default_graph_path(str(a)) != mod.default_graph_path(str(b))
+    assert Path(mod.default_graph_path(str(a))).parent.name.startswith("Repo-")
 
 
 def test_karst_command_parsing(mod) -> None:

@@ -28,6 +28,8 @@ The gate never returns `deny` and never exits 2. It asks. There is no switch tha
 
    The graph root must be the repo root. The gate uses the nearest parent directory with a `.git`, or the session `cwd` if there is none.
 
+   The graph is written to `~/.karst/indexes/<repo dir name>-<hash>/graph.json`, where `<hash>` is the first 12 hex characters of the SHA-256 of the repo root's normalized real path, so two repos with the same folder name never share a graph. The gate computes the same path. Graphs from karst 0.2.10 and earlier (`graph.pkl`, a pickle, keyed by folder name only) are not read for safety: run `graph-index` again.
+
 3. Copy both files from `contrib/claude-code/` in the karst repo into your hooks folder. The shim finds the `.py` next to itself.
 
    ```
@@ -70,7 +72,7 @@ All settings are environment variables. None of them disables the gate.
 | `KARST_GATE_ASK_AT` | `CRITICAL` | Lowest risk that asks. One of `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`. Any other value makes the gate ask. |
 | `KARST_GATE_TIMEOUT` | `8` | Seconds allowed for each karst call. |
 | `KARST_BIN` | `<python> -m karst` | The karst command, split with `shlex`. |
-| `KARST_GRAPH_PATH` | `~/.karst/indexes/<repo dir name>/graph.pkl` | Graph file. The default is where `karst graph-index` writes. |
+| `KARST_GRAPH_PATH` | `~/.karst/indexes/<repo dir name>-<hash>/graph.json` | Graph file (JSON). The default is where `karst graph-index` writes. A `.pkl` path is refused by karst, so the gate asks. |
 | `KARST_GATE_LOG` | `~/.claude/global-observation/karst-gate-log.jsonl` | Decision log. |
 
 Each decision adds one JSON line to the log: `ts`, `tool`, `file`, `targets`, `decision`, `risk`, `affected`, `reason`, `elapsed_ms`. A logging failure never changes the decision.
@@ -86,7 +88,7 @@ Each decision adds one JSON line to the log: `ts`, `tool`, `file`, `targets`, `d
 | File does not exist yet (new file) | allow |
 | File is outside the repo root, or under a hidden, vendored or build directory (`.git`, `node_modules`, `vendor`, `build`, `dist`, `target`, ...) | allow, logged |
 | `old_string` is not in the file, or a Write changes nothing | allow (the Edit tool rejects a bad `old_string` itself) |
-| No graph file | ask: run `karst graph-index` |
+| No graph file (an old `graph.pkl` does not count) | ask: run `karst graph-index` |
 | karst missing, times out, exits non-zero, or prints something unreadable | ask, with the cause |
 | Edited symbol has no node in the graph | ask: coverage gap |
 | Invalid `KARST_GATE_ASK_AT` or `KARST_GATE_TIMEOUT` | ask |

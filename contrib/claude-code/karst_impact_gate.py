@@ -25,8 +25,10 @@ Config (environment variables). There is no switch that turns the gate off.
   KARST_BIN           karst command, split with shlex     (default: this
                       Python with "-m karst")
   KARST_GRAPH_PATH    graph file                          (default
-                      ~/.karst/indexes/<repo dir name>/graph.pkl, the same
-                      place `karst graph-index` writes)
+                      ~/.karst/indexes/<repo dir name>-<hash>/graph.json,
+                      the same place `karst graph-index` writes; <hash> is
+                      the first 12 hex chars of sha256 of the normalized
+                      real path of the repo root)
   KARST_GATE_LOG      decision log, JSON lines            (default
                       ~/.claude/global-observation/karst-gate-log.jsonl)
 """
@@ -35,6 +37,7 @@ from __future__ import annotations
 
 import bisect
 import difflib
+import hashlib
 import json
 import os
 import re
@@ -214,8 +217,18 @@ def find_repo_root(file_abs: str, cwd: str) -> str:
 
 
 def default_graph_path(repo_root: str) -> str:
-    """Mirror `karst graph-index` (karst/graph_cli.py _cmd_graph_index)."""
-    name = Path(repo_root).name or "root"
+    """Mirror karst.paths.default_graph_path (karst/paths.py), which
+    `karst graph-index` uses. Copied, not imported: the gate does not import
+    karst. tests/test_impact_gate.py checks that the two agree."""
+    real = os.path.realpath(os.path.expanduser(repo_root))
+    name = Path(real).name or "root"
+    digest = hashlib.sha256(os.fsencode(os.path.normcase(real))).hexdigest()[:12]
+    return str(Path.home() / ".karst" / "indexes" / f"{name}-{digest}" / "graph.json")
+
+
+def legacy_graph_path(repo_root: str) -> str:
+    """Where karst <= 0.2.10 wrote the graph (a pickle, no longer read)."""
+    name = Path(os.path.realpath(repo_root)).name or "root"
     return str(Path.home() / ".karst" / "indexes" / name / "graph.pkl")
 
 
@@ -448,6 +461,13 @@ def run_impact(target: Target, graph: str, cfg: Config, repo_root: str) -> Impac
     if code == 1 and "No targets matched" in err:
         return Impact(target, found=False)
     if code != 0:
+        if "graph format changed" in err:
+            raise ask(
+                f"the karst graph at {graph} is in the old pickle format, which "
+                f"karst no longer reads. Run `karst graph-index {repo_root}` "
+                "(graphs are now graph.json) and point KARST_GRAPH_PATH at the "
+                "new file if you set it. Approve to continue without the check."
+            )
         if "graph not found" in err:
             raise ask(
                 f"no karst graph at {graph}. Run `karst graph-index {repo_root}` "
@@ -689,9 +709,15 @@ def evaluate(raw: bytes, env: dict[str, str], ctx: dict) -> Result:
 
     graph = cfg.graph_override or default_graph_path(repo_root)
     if not os.path.isfile(graph):
+        legacy = "" if cfg.graph_override else legacy_graph_path(repo_root)
+        old_note = (
+            f" Found an old-format graph at {legacy}; the graph format changed "
+            "for safety, so it is not used."
+            if legacy and os.path.isfile(legacy) else ""
+        )
         raise ask(
             f"no karst graph at {graph}, so the blast radius of this edit is "
-            f"unknown. Run `karst graph-index {repo_root}` (or set "
+            f"unknown.{old_note} Run `karst graph-index {repo_root}` (or set "
             "KARST_GRAPH_PATH). Approve to continue without the check."
         )
 

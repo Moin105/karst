@@ -2,7 +2,7 @@
 
 Solves the cross-session amnesia problem: which packs the user attached or
 pinned should survive shell restarts. Lives next to the Qdrant index and
-the graph pickle so the lifetime ties to the index lifetime.
+the graph (graph.json) so the lifetime ties to the index lifetime.
 
 Pinned vs attached (spec §20):
 - pinned   — included in every query against this repo until explicitly unpinned

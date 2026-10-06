@@ -28,6 +28,7 @@ from .packs.models import Pack
 from .packs.store import PackStore
 from .packs.tagger import compile_packs, tag_relpath
 from .parser import ParserRegistry, parse_file
+from .paths import ensure_private_dir
 from .store import DEFAULT_COLLECTION, ChunkStore
 from .walker import iter_source_files
 
@@ -61,8 +62,7 @@ def index_repo(
 
     progress(files_seen, chunks_emitted) is called once per file when set.
     """
-    storage_path = Path(storage_path).resolve()
-    storage_path.mkdir(parents=True, exist_ok=True)
+    storage_path = ensure_private_dir(Path(storage_path).resolve())
 
     embedder = Embedder(
         embedding_model,

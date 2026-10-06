@@ -51,6 +51,12 @@ class ChunkStore:
         location: str | Path,
         collection: str = DEFAULT_COLLECTION,
     ) -> None:
+        from .paths import check_vector_store_ownership
+
+        # Qdrant local mode unpickles stored points on open; never open one
+        # another user could have written (POSIX check, see paths.py).
+        check_vector_store_ownership(location)
+
         from qdrant_client import QdrantClient
 
         self._collection = collection

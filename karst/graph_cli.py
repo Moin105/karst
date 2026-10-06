@@ -15,12 +15,55 @@ from .graph.impact import (
     resolve_targets,
     resolve_targets_from_diff,
 )
-from .graph.store import EdgeKind, GraphStore
+from .graph.store import (
+    LEGACY_GRAPH_MESSAGE,
+    EdgeKind,
+    GraphFormatError,
+    GraphStore,
+    is_legacy_graph_path,
+)
+from .paths import (
+    GRAPH_FILENAME,
+    LEGACY_GRAPH_FILENAME,
+    default_index_dir,
+    ensure_private_dir,
+    legacy_index_hint,
+)
 from .review.diff import parse_diff
 
 
 def default_graph_path(storage_dir: Path) -> Path:
-    return storage_dir / "graph.pkl"
+    return storage_dir / GRAPH_FILENAME
+
+
+def load_graph_or_explain(graph_path: Path) -> GraphStore | None:
+    """Load a graph, or print a clear error and return None.
+
+    Covers: a missing file (with a hint when an old graph.pkl sits next to
+    it), a legacy pickle (never unpickled), and malformed JSON.
+    """
+    if is_legacy_graph_path(graph_path):
+        print(f"error: {graph_path}: {LEGACY_GRAPH_MESSAGE}", file=sys.stderr)
+        return None
+    if not graph_path.exists():
+        legacy = graph_path.with_name(LEGACY_GRAPH_FILENAME)
+        if legacy.exists():
+            print(
+                f"error: graph not found at {graph_path} (found {legacy}: "
+                f"{LEGACY_GRAPH_MESSAGE}).",
+                file=sys.stderr,
+            )
+        else:
+            print(f"error: graph not found at {graph_path}. Run `graph-index` first.", file=sys.stderr)
+        return None
+    try:
+        return GraphStore.load(graph_path)
+    except GraphFormatError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return None
+    except OSError as exc:
+        print(f"error: could not read graph {graph_path}: {exc}", file=sys.stderr)
+        return None
 
 
 # ---------------------------------------------------------------- graph-index
@@ -33,7 +76,8 @@ def add_graph_index_subparser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
     p.add_argument(
         "--storage",
-        help="Where to write the graph (default ~/.karst/indexes/<repo>/graph.pkl).",
+        help="Where to write the graph: a directory (graph.json goes inside) or a "
+        ".json file path (default ~/.karst/indexes/<repo>-<hash>/graph.json).",
     )
     p.set_defaults(func=_cmd_graph_index)
 
@@ -47,10 +91,20 @@ def _cmd_graph_index(args: argparse.Namespace) -> int:
     if args.storage:
         graph_path = Path(args.storage)
         if graph_path.is_dir():
-            graph_path = graph_path / "graph.pkl"
+            graph_path = graph_path / GRAPH_FILENAME
+        if is_legacy_graph_path(graph_path):
+            print(
+                f"error: {graph_path}: {LEGACY_GRAPH_MESSAGE}. Graphs are JSON "
+                f"now; pass a directory or a .json path.",
+                file=sys.stderr,
+            )
+            return 2
     else:
-        # Mirror the vector-index default layout.
-        base = Path.home() / ".karst" / "indexes" / (root.resolve().name or "root")
+        # Same per-repo directory as the vector index.
+        hint = legacy_index_hint(root)
+        if hint:
+            print(hint, file=sys.stderr)
+        base = ensure_private_dir(default_index_dir(root))
         graph_path = default_graph_path(base)
 
     print(f"Indexing graph: {root.resolve()}", file=sys.stderr)
@@ -105,8 +159,16 @@ def add_impact_subparser(sub: argparse._SubParsersAction) -> None:
     src.add_argument("--base", metavar="REV",
                      help="Target chunks overlapping the diff from REV to HEAD.")
 
-    p.add_argument("--graph-path", help="Path to the graph pickle (default mirrors graph-index).")
-    p.add_argument("--repo-path", default=".", help="Local repo dir for --staged/--base.")
+    p.add_argument(
+        "--graph-path",
+        help="Path to the graph JSON (default: the graph `graph-index` wrote "
+        "for --repo-path, ~/.karst/indexes/<repo>-<hash>/graph.json).",
+    )
+    p.add_argument(
+        "--repo-path",
+        default=".",
+        help="Local repo dir: used by --staged/--base and to find the default graph (default cwd).",
+    )
     p.add_argument("--max-depth", type=int, default=3)
     p.add_argument("--limit", type=int, default=25, help="Cap the rendered output.")
     p.add_argument("--jsonl", action="store_true")
@@ -114,15 +176,18 @@ def add_impact_subparser(sub: argparse._SubParsersAction) -> None:
 
 
 def _cmd_impact(args: argparse.Namespace) -> int:
-    if not args.graph_path:
-        print("error: --graph-path is required.", file=sys.stderr)
-        return 2
-    graph_path = Path(args.graph_path)
-    if not graph_path.exists():
-        print(f"error: graph not found at {graph_path}. Run `graph-index` first.", file=sys.stderr)
-        return 2
+    if args.graph_path:
+        graph_path = Path(args.graph_path)
+    else:
+        graph_path = default_graph_path(default_index_dir(args.repo_path))
+        if not graph_path.exists():
+            hint = legacy_index_hint(args.repo_path)
+            if hint:
+                print(hint, file=sys.stderr)
 
-    store = GraphStore.load(graph_path)
+    store = load_graph_or_explain(graph_path)
+    if store is None:
+        return 2
 
     if args.diff or args.staged or args.base:
         if args.diff:

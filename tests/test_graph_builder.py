@@ -127,7 +127,7 @@ def test_impact_on_merge_url_reaches_public_client_methods() -> None:
 
 def test_save_and_load_roundtrip(tmp_path: Path) -> None:
     store, _ = build_graph(FIXTURE)
-    p = tmp_path / "graph.pkl"
+    p = tmp_path / "graph.json"
     store.save(p)
 
     from karst.graph.store import GraphStore

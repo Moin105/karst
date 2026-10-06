@@ -24,23 +24,28 @@ from .graph_cli import add_graph_index_subparser, add_impact_subparser
 from .indexer import index_repo
 from .llm import DEFAULT_ANTHROPIC_MODEL, DEFAULT_OPENAI_MODEL, LLMNotConfigured, default_llm
 from .packs_cli import add_packs_subparser
+from .paths import (
+    GRAPH_FILENAME,
+    default_index_dir,
+    ensure_private_dir,
+    karst_home,
+    legacy_index_hint,
+)
 from .review_cli import add_review_subparser
 from .state import clear_attached, load_state
 from .store import DEFAULT_COLLECTION
 from .tokens import estimate_cost
 
 
-# Default per-user storage path. Each repo gets its own subdirectory so two
-# projects don't share an index. Phase 1 keeps this in the home dir; in
-# production §34 calls for per-tenant Qdrant collections.
+# Default per-user storage path: ~/.karst/indexes/<folder>-<hash of realpath>,
+# so two projects (even with the same folder name) never share an index.
+# karst/paths.py owns the formula.
 def _default_storage(path: Path) -> Path:
-    base = Path.home() / ".karst" / "indexes"
-    slug = path.resolve().name or "root"
-    return base / slug
+    return default_index_dir(path)
 
 
 def _default_cache_dir() -> Path:
-    return Path.home() / ".karst" / "models"
+    return karst_home() / "models"
 
 
 # --------------------------------------------------------------------------- #
@@ -100,7 +105,13 @@ def _cmd_index(args: argparse.Namespace) -> int:
         print(f"error: not a directory: {root}", file=sys.stderr)
         return 2
 
-    storage = Path(args.storage) if args.storage else _default_storage(root)
+    if args.storage:
+        storage = Path(args.storage)
+    else:
+        hint = legacy_index_hint(root)
+        if hint:
+            print(hint, file=sys.stderr)
+        storage = ensure_private_dir(_default_storage(root))
     cache = Path(args.embedder_cache) if args.embedder_cache else _default_cache_dir()
 
     print(f"Indexing:        {root.resolve()}", file=sys.stderr)
@@ -279,6 +290,10 @@ def _cmd_ask(args: argparse.Namespace) -> int:
     # `quickstart`), so `cd project && karst ask "…"` works without --storage.
     storage = Path(args.storage) if args.storage else _default_storage(Path("."))
     if not storage.exists():
+        if not args.storage:
+            hint = legacy_index_hint(Path("."))
+            if hint:
+                print(hint, file=sys.stderr)
         print(
             f"error: no index found at {storage}.\n"
             "Run `karst quickstart` (or `karst index`) in your project first, "
@@ -290,9 +305,13 @@ def _cmd_ask(args: argparse.Namespace) -> int:
     cache = Path(args.embedder_cache) if args.embedder_cache else _default_cache_dir()
 
     graph_path = Path(args.graph) if args.graph else None
-    if graph_path is not None and not graph_path.exists():
-        print(f"error: --graph path does not exist: {graph_path}", file=sys.stderr)
-        return 2
+    if graph_path is not None:
+        # Validate up front (legacy pickle, malformed JSON) so the error is a
+        # clean message instead of a traceback mid-answer.
+        from .graph_cli import load_graph_or_explain
+
+        if load_graph_or_explain(graph_path) is None:
+            return 2
 
     # One-shot when a question is given; otherwise drop into an interactive loop.
     interactive = bool(args.interactive) or not args.question
@@ -426,7 +445,13 @@ def _cmd_quickstart(args: argparse.Namespace) -> int:
     if not root.is_dir():
         print(f"error: not a directory: {root}", file=sys.stderr)
         return 2
-    storage = Path(args.storage) if args.storage else _default_storage(root)
+    if args.storage:
+        storage = Path(args.storage)
+    else:
+        hint = legacy_index_hint(root)
+        if hint:
+            print(hint, file=sys.stderr)
+        storage = ensure_private_dir(_default_storage(root))
 
     print(
         f"\n▸ karst quickstart — getting '{root.resolve().name}' ready to explore\n",
@@ -447,7 +472,7 @@ def _cmd_quickstart(args: argparse.Namespace) -> int:
     # Soft-fail: tiny repos may yield no packs; that shouldn't fail quickstart.
     main(["packs", "--storage", str(storage), "suggest", str(root), "--apply", "--retag"])
 
-    graph_path = storage / "graph.pkl"
+    graph_path = storage / GRAPH_FILENAME
     s = str(storage)
     g = str(graph_path)
     print("\n✓ Ready! Your repo is indexed, graphed, and packed. Try:\n", file=sys.stderr)
@@ -476,15 +501,15 @@ karst — things to try
 One-time setup on any repo (index + graph + packs):
   karst quickstart ./my-repo
 
-Explore (S = the storage path quickstart prints, e.g. ~/.karst/indexes/my-repo):
+Explore (S = the storage path quickstart prints, e.g. ~/.karst/indexes/my-repo-1a2b3c4d5e6f):
   karst ask "where is auth handled?" --storage S --no-llm   # cited chunks, no key
   karst ask "summarize the checkout flow" --storage S       # LLM answer (needs API key)
   karst ask -i --storage S                                  # interactive: ask many questions
-  karst ask "..." --storage S --graph S/graph.pkl           # GraphRAG: pull in neighbors
+  karst ask "..." --storage S --graph S/graph.json          # GraphRAG: pull in neighbors
 
-Understand impact before you change something:
-  karst impact --target chargeUser --graph-path S/graph.pkl
-  karst impact --staged --graph-path S/graph.pkl            # what your staged diff touches
+Understand impact before you change something (run inside the repo):
+  karst impact --target chargeUser                          # or --graph-path S/graph.json
+  karst impact --staged                                     # what your staged diff touches
 
 Scope retrieval with packs (fewer tokens, sharper answers):
   karst packs --storage S list
@@ -545,7 +570,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ingest a repo into the Qdrant vector store (walk -> parse -> chunk -> embed -> upsert).",
     )
     p_index.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
-    p_index.add_argument("--storage", help="Qdrant local-storage path (default: ~/.karst/indexes/<repo>).")
+    p_index.add_argument("--storage", help="Qdrant local-storage path (default: ~/.karst/indexes/<repo>-<hash>).")
     p_index.add_argument("--collection", default=DEFAULT_COLLECTION)
     p_index.add_argument("--embedding-model", default=DEFAULT_MODEL)
     p_index.add_argument("--embedder-cache", help="Where to cache the embedding model weights.")
@@ -597,7 +622,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ask.add_argument(
         "--graph",
         metavar="PATH",
-        help="Use GraphRAG: expand vector hits with graph neighbors from this graph pickle.",
+        help="Use GraphRAG: expand vector hits with graph neighbors from this graph file (graph.json).",
     )
     p_ask.add_argument(
         "--graph-extra",
@@ -619,7 +644,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="One command to get a repo ready: index + graph + suggested packs, then prints what to try.",
     )
     p_qs.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
-    p_qs.add_argument("--storage", help="Storage path (default: ~/.karst/indexes/<repo>).")
+    p_qs.add_argument("--storage", help="Storage path (default: ~/.karst/indexes/<repo>-<hash>).")
     p_qs.add_argument("--full", action="store_true", help="Force a full re-index (ignore the SHA manifest).")
     p_qs.set_defaults(func=_cmd_quickstart)
 
