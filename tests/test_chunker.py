@@ -38,6 +38,43 @@ def test_python_chunks(registry: ParserRegistry) -> None:
     assert by_qname["Greeter.greet"].kind == ChunkKind.METHOD
 
 
+def test_decorated_definitions_chunk_once(registry: ParserRegistry) -> None:
+    """Regression: the chunker used to skip a decorated definition's inner node
+    by `id()` of a throwaway tree-sitter adapter. Recycled ids dropped unrelated
+    methods (httpx's Client.request) and duplicated decorated ones
+    (Client.stream.stream)."""
+    root = FIXTURES / "httpx_like"
+    parsed = parse_file(root / "_client.py", repo_root=root, registry=registry)
+    assert parsed is not None
+    chunks = chunk_file(parsed)
+    qnames = [c.qualified_name for c in chunks]
+    by_qname = {c.qualified_name: c for c in chunks}
+
+    # Every plain method survives next to its decorated neighbours.
+    for qn in (
+        "BaseClient.__init__", "BaseClient.build_request", "BaseClient._merge_url",
+        "Client._transport_for_url", "Client.request", "Client.send",
+        "Client.get", "Client.post",
+    ):
+        assert qnames.count(qn) == 1, (qn, qnames)
+
+    # Decorated methods are one chunk spanning the decorator, never a nested
+    # copy of themselves.
+    assert qnames.count("Client.stream") == 1
+    stream = by_qname["Client.stream"]
+    assert stream.kind == ChunkKind.METHOD
+    assert stream.parent == "Client"
+    assert stream.code.startswith("@contextmanager")
+    assert qnames.count("BaseClient.timeout") == 2  # @property + @timeout.setter
+    assert not [q for q in qnames if q.split(".")[-1:] == q.split(".")[-2:-1]], qnames
+
+    # A decorated class is a class, and its methods hang off it.
+    assert qnames.count("Timeout") == 1
+    assert by_qname["Timeout"].kind == ChunkKind.CLASS
+    assert by_qname["Timeout.as_dict"].kind == ChunkKind.METHOD
+    assert by_qname["Timeout.as_dict"].parent == "Timeout"
+
+
 def test_typescript_chunks(registry: ParserRegistry) -> None:
     parsed = parse_file(FIXTURES / "sample.ts", repo_root=FIXTURES, registry=registry)
     assert parsed is not None

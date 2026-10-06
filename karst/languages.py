@@ -32,9 +32,10 @@ PYTHON = LanguageSpec(
     chunk_nodes={
         "function_definition": ChunkKind.FUNCTION,
         "class_definition": ChunkKind.CLASS,
+        # Kind is taken from the wrapped definition; see chunker._walk.
         "decorated_definition": ChunkKind.FUNCTION,
     },
-    container_nodes=frozenset({"class_definition", "decorated_definition"}),
+    container_nodes=frozenset({"class_definition"}),
 )
 
 JAVASCRIPT = LanguageSpec(

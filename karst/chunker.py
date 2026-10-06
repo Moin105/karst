@@ -11,7 +11,12 @@ Design notes:
   retrieval-friendly units the spec calls for ("each chunk is a complete
   function, class, or top-level statement"; spec §7).
 - "decorated_definition" in Python wraps the real function/class. We treat
-  the decorated form as the chunk and skip the inner duplicate.
+  the decorated form as the chunk (taking its kind from the wrapped
+  definition) and never emit the inner definition on its own; a wrapped
+  class's body is still walked so its methods hang off the class.
+- Never key walk state on `id()` of a node: `_tsapi` hands out a fresh
+  adapter per `child(i)` call, so ids are recycled as soon as an adapter is
+  freed and an id-keyed set silently matches unrelated nodes.
 
 API note:
 - tree-sitter node access differs across wheels: upstream py-tree-sitter (CI /
@@ -50,7 +55,7 @@ def chunk_file(parsed: ParsedFile) -> list[Chunk]:
 
     chunks: list[Chunk] = []
     root = wrap_root(parsed.tree)
-    _walk(root, lang, parsed, parent_qname=None, out=chunks, skip_children_of=set())
+    _walk(root, lang, parsed, parent_qname=None, out=chunks)
     return chunks
 
 
@@ -67,53 +72,41 @@ def _walk(
     *,
     parent_qname: str | None,
     out: list[Chunk],
-    skip_children_of: set[int],
 ) -> None:
-    """Recursively walk the tree, emitting chunks for chunkable nodes.
-
-    `skip_children_of` carries Python object ids of nodes whose chunkable
-    descendants we've already processed via a wrapper (e.g.
-    decorated_definition wraps function_definition; we don't want both).
-    """
+    """Recursively walk the tree, emitting chunks for chunkable nodes."""
     for child in _iter_children(node):
         child_kind = child.kind()
-        if id(child) in skip_children_of:
-            continue
 
         chunk_kind = lang.chunk_nodes.get(child_kind)
         if chunk_kind is not None:
+            # Python decorated_definition wraps function_definition /
+            # class_definition. The decorated span is the chunk, but its kind
+            # and its body come from the wrapped definition, which is never
+            # emitted on its own.
+            definition = child
+            if child_kind == "decorated_definition":
+                definition = _decorated_inner(child) or child
+                chunk_kind = lang.chunk_nodes.get(definition.kind(), chunk_kind)
+
             chunk = _emit_chunk(child, chunk_kind, lang, parsed, parent_qname=parent_qname)
             next_parent = chunk.qualified_name if chunk is not None else parent_qname
             if chunk is not None:
                 out.append(chunk)
 
-            # Python decorated_definition wraps function_definition /
-            # class_definition. Mark the inner node so we don't double-emit.
-            if child_kind == "decorated_definition":
-                for grand in _iter_children(child):
-                    if grand.kind() in {"function_definition", "class_definition"}:
-                        skip_children_of.add(id(grand))
-
-            if child_kind in lang.container_nodes:
-                _walk(
-                    child,
-                    lang,
-                    parsed,
-                    parent_qname=next_parent,
-                    out=out,
-                    skip_children_of=skip_children_of,
-                )
+            if definition.kind() in lang.container_nodes:
+                _walk(definition, lang, parsed, parent_qname=next_parent, out=out)
         else:
             # Not a chunk node; keep descending — methods may be wrapped in a
             # class_body / declaration_list node we don't emit ourselves.
-            _walk(
-                child,
-                lang,
-                parsed,
-                parent_qname=parent_qname,
-                out=out,
-                skip_children_of=skip_children_of,
-            )
+            _walk(child, lang, parsed, parent_qname=parent_qname, out=out)
+
+
+def _decorated_inner(node):
+    """The function_definition / class_definition a decorated_definition wraps."""
+    for child in _iter_children(node):
+        if child.kind() in {"function_definition", "class_definition"}:
+            return child
+    return None
 
 
 def _emit_chunk(
@@ -169,10 +162,8 @@ def _extract_name(node, lang: LanguageSpec, source: bytes) -> str | None:
 
     # Python decorated_definition: name lives on the wrapped function/class.
     if kind == "decorated_definition":
-        for child in _iter_children(node):
-            if child.kind() in {"function_definition", "class_definition"}:
-                return _extract_name(child, lang, source)
-        return None
+        inner = _decorated_inner(node)
+        return _extract_name(inner, lang, source) if inner is not None else None
 
     # Rust impl_item: prefer the "type" being implemented (or the trait).
     if kind == "impl_item":

@@ -18,6 +18,7 @@ from karst.graph.impact import analyze_impact, resolve_targets
 from karst.graph.store import EdgeKind, NodeKind, file_node_id
 
 FIXTURE = Path(__file__).parent / "fixtures" / "graph_repo"
+HTTPX_LIKE = Path(__file__).parent / "fixtures" / "httpx_like"
 
 
 def test_graph_has_files_and_functions() -> None:
@@ -95,6 +96,33 @@ def test_impact_on_get_user_surfaces_login_and_charge() -> None:
     }
     assert {"auth.py", "billing.py"}.issubset(affected_files)
     assert report.risk in ("medium", "low")
+
+
+def test_impact_on_merge_url_reaches_public_client_methods() -> None:
+    """Regression (httpx): impact on BaseClient._merge_url must walk
+    build_request -> Client.request -> Client.get. Client.request used to be
+    missing from the graph when a decorated neighbour's recycled `id()` made
+    the chunker skip it."""
+    store, _ = build_graph(HTTPX_LIKE)
+
+    targets = resolve_targets(store, qnames=["_client.py::BaseClient._merge_url"])
+    assert len(targets) == 1
+
+    report = analyze_impact(store, targets=targets, max_depth=3)
+    depth = {a.qualified_name: a.depth for a in report.affected}
+    assert depth.get("_client.py::BaseClient.build_request") == 1
+    assert depth.get("_client.py::Client.request") == 2
+    assert depth.get("_client.py::Client.stream") == 2
+    assert depth.get("_client.py::Client.get") == 3
+    assert depth.get("_client.py::Client.post") == 3
+
+    # The decorated class's method is CONTAINed by the class node itself.
+    timeout_id = store.find_by_qname("_client.py::Timeout")
+    as_dict_id = store.find_by_qname("_client.py::Timeout.as_dict")
+    assert store.get_node(timeout_id).kind == NodeKind.CLASS
+    assert (timeout_id, EdgeKind.CONTAINS) in {
+        (src, k) for src, k, _ in store.in_edges(as_dict_id)
+    }
 
 
 def test_save_and_load_roundtrip(tmp_path: Path) -> None:

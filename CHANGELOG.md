@@ -2,6 +2,25 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## Unreleased
+
+**Python methods no longer go missing from the index and graph.** The chunker
+skipped a decorator's wrapped definition by remembering the `id()` of a
+short-lived tree-sitter adapter. Those ids are recycled, so the skip set
+matched unrelated nodes at random:
+
+- **Plain methods were silently dropped** — on httpx, `Client.request` (and so
+  the route from `_merge_url` up to `get`/`post`/…) vanished from
+  `graph-index`, while `analyze` still showed it. Which methods went missing
+  changed from run to run.
+- **Decorated definitions were emitted twice**, as `Client.stream` and a bogus
+  `Client.stream.stream`; a decorated class's methods hung off the duplicate.
+- Decorated classes (`@dataclass` etc.) are now `class` chunks, so their
+  methods and base classes attach to them.
+
+Existing indexes keep the bad chunks for unchanged files: re-run
+`karst index <repo> --full` and `karst graph-index <repo>`.
+
 ## 0.2.10
 
 **Fresh installs work again.** A clean `pip install karst` had started pulling
