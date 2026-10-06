@@ -37,7 +37,14 @@ dependencies = [
     # 0.26.0 segfaults / corrupts node data mid-walk on real repos (seen on
     # Windows + Python 3.13); 0.25.x is clean.
     "tree-sitter>=0.23,<0.26",
-    "tree-sitter-language-pack>=0.7.3,<2",
+    # Pinned to the 1.9.x line karst was built against. From 1.0 on this package
+    # ships NO grammars in the wheel: the first parse downloads a parser bundle
+    # from GitHub releases (SHA-256 checked, then cached on disk). Download host,
+    # cache handling and download() behaviour changed between 1.x releases, and
+    # the README section "What leaves your machine" describes 1.9.1, so move
+    # this bound only after re-checking that section. The 0.x wheels bundle the
+    # grammars (no runtime download) but have not been tested with karst.
+    "tree-sitter-language-pack>=1.9.1,<1.10",
     "pathspec>=0.12,<2",
     "fastembed>=0.4,<0.9",
     "qdrant-client>=1.12,<2",
