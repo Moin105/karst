@@ -2,7 +2,7 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
-## Unreleased
+## 0.2.11
 
 **Python methods no longer go missing from the index and graph.** The chunker
 skipped a decorator's wrapped definition by remembering the `id()` of a
