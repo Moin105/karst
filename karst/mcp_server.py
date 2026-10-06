@@ -28,18 +28,25 @@ Tools exposed:
 Run it:  karst-mcp                 (stdio — local hosts: Claude Desktop, Cursor)
    or:    python -m karst.mcp_server
 Remote:  karst-mcp --http          (Streamable HTTP — for hosted/remote hosts)
-         Set KARST_MCP_TOKEN to require an `Authorization: Bearer <token>` header
-         before exposing it beyond localhost.
+         Requires KARST_MCP_TOKEN (clients send `Authorization: Bearer <token>`);
+         the server refuses to start without it. Binds 127.0.0.1 unless
+         --host / KARST_MCP_HOST says otherwise. Tools only accept repo paths
+         under KARST_MCP_ROOTS (os.pathsep-separated; default: the server's
+         working directory).
 """
 
 from __future__ import annotations
 
 import atexit
+import os
+import sys
 import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from mcp.server.fastmcp import FastMCP
+
+from .paths import GRAPH_FILENAME, LEGACY_GRAPH_FILENAME, default_index_dir, karst_home, legacy_index_hint
 
 if TYPE_CHECKING:  # pragma: no cover
     from .embedder import Embedder
@@ -49,24 +56,85 @@ if TYPE_CHECKING:  # pragma: no cover
 
 mcp = FastMCP("karst")
 
+DEFAULT_HTTP_HOST = "127.0.0.1"
+
 
 # --------------------------------------------------------------------------- #
-# Path conventions — mirror the CLI so the MCP server and `karst index` share
-# the exact same on-disk index location.
+# Repo paths. In HTTP mode every tool's repo_path must resolve (symlinks and
+# ".." included) to a directory under one of the allowed roots. In stdio mode
+# (local user, own machine) any path is accepted, as before.
 # --------------------------------------------------------------------------- #
 
-def _storage_for(repo_path: str) -> Path:
-    root = Path(repo_path).expanduser().resolve()
-    slug = root.name or "root"
-    return Path.home() / ".karst" / "indexes" / slug
+class RepoPathNotAllowed(ValueError):
+    """repo_path is outside the roots this HTTP server may serve."""
+
+
+# None = unrestricted (stdio). A tuple of normcase(realpath) roots in HTTP mode.
+_allowed_roots: tuple[str, ...] | None = None
+
+
+def _norm_real(path: str) -> str:
+    return os.path.normcase(os.path.realpath(os.path.expanduser(path)))
+
+
+def _is_within(path_norm: str, root_norm: str) -> bool:
+    try:
+        return os.path.commonpath([path_norm, root_norm]) == root_norm
+    except ValueError:  # different drives on Windows, or mixed abs/rel
+        return False
+
+
+def parse_allowed_roots(raw: str | None, cwd: str) -> tuple[list[str], bool]:
+    """Roots from KARST_MCP_ROOTS (os.pathsep-separated), resolved.
+
+    Returns (roots, defaulted). Unset or blank means the server's working
+    directory. Raises ValueError for a root that is not an existing directory.
+    """
+    entries = [e.strip() for e in (raw or "").split(os.pathsep) if e.strip()]
+    defaulted = not entries
+    if defaulted:
+        entries = [cwd]
+    roots: list[str] = []
+    for entry in entries:
+        real = os.path.realpath(os.path.expanduser(entry))
+        if not os.path.isdir(real):
+            raise ValueError(f"KARST_MCP_ROOTS entry is not a directory: {entry}")
+        if real not in roots:
+            roots.append(real)
+    return roots, defaulted
+
+
+def set_allowed_roots(roots: list[str] | None) -> None:
+    """Restrict tools to these roots (None lifts the restriction)."""
+    global _allowed_roots
+    _allowed_roots = None if roots is None else tuple(_norm_real(r) for r in roots)
+
+
+def _resolve_repo(repo_path: str) -> Path:
+    """The repo's real path, checked against the allowed roots in HTTP mode."""
+    if not isinstance(repo_path, str) or not repo_path.strip():
+        raise RepoPathNotAllowed("repo_path is empty")
+    real = os.path.realpath(os.path.expanduser(repo_path))
+    if _allowed_roots is not None:
+        norm = os.path.normcase(real)
+        if not any(_is_within(norm, root) for root in _allowed_roots):
+            raise RepoPathNotAllowed(
+                f"repo_path {repo_path!r} is outside the directories this server "
+                "may read (KARST_MCP_ROOTS)."
+            )
+    return Path(real)
+
+
+def _storage_for(repo: Path) -> Path:
+    return default_index_dir(repo)
 
 
 def _cache_dir() -> Path:
-    return Path.home() / ".karst" / "models"
+    return karst_home() / "models"
 
 
 def _graph_path(storage: Path) -> Path:
-    return storage / "graph.pkl"
+    return storage / GRAPH_FILENAME
 
 
 def _is_indexed(storage: Path) -> bool:
@@ -77,6 +145,11 @@ _NOT_INDEXED_HINT = (
     "This repo isn't indexed yet. Run `index_repository` once (or `karst index "
     "<path>` on the command line), then try again."
 )
+
+
+def _not_indexed(repo: Path) -> str:
+    hint = legacy_index_hint(repo)
+    return _NOT_INDEXED_HINT + (f"\n{hint}" if hint else "")
 
 
 def _est_tokens(text: str) -> int:
@@ -90,7 +163,7 @@ def _est_tokens(text: str) -> int:
 _lock = threading.RLock()
 _embedder: "Embedder | None" = None
 _stores: dict[str, "ChunkStore"] = {}       # keyed by str(storage)
-_graphs: dict[str, "GraphStore"] = {}       # keyed by str(graph.pkl)
+_graphs: dict[str, "GraphStore"] = {}       # keyed by str(graph.json)
 _packs: dict[str, "PackStore"] = {}         # keyed by str(packs.sqlite)
 
 
@@ -192,9 +265,10 @@ def search_code(
             list_packs). Scoping cuts tokens further. Omit to search all.
         limit: Max number of chunks to return (default 8).
     """
-    storage = _storage_for(repo_path)
+    repo = _resolve_repo(repo_path)
+    storage = _storage_for(repo)
     if not _is_indexed(storage):
-        return _NOT_INDEXED_HINT
+        return _not_indexed(repo)
 
     with _lock:
         embedder = _get_embedder()
@@ -240,11 +314,22 @@ def find_impact(symbol: str, repo_path: str, max_depth: int = 3) -> str:
         repo_path: Absolute path to the repository (must be indexed first).
         max_depth: How many dependency hops to walk (default 3).
     """
-    storage = _storage_for(repo_path)
+    from .graph.store import LEGACY_GRAPH_MESSAGE, GraphFormatError
+
+    repo = _resolve_repo(repo_path)
+    storage = _storage_for(repo)
 
     with _lock:
-        graph = _get_graph(storage)
+        try:
+            graph = _get_graph(storage)
+        except GraphFormatError as exc:
+            return f"The graph for this repo could not be loaded: {exc}"
         if graph is None:
+            if (storage / LEGACY_GRAPH_FILENAME).exists():
+                return (
+                    f"The graph for this repo is in the old format ({LEGACY_GRAPH_MESSAGE}). "
+                    "Run `index_repository` to rebuild it."
+                )
             return (
                 "No dependency graph for this repo yet. Run `index_repository` "
                 "(it builds the graph too), then try again."
@@ -298,9 +383,10 @@ def list_packs(repo_path: str) -> str:
     Args:
         repo_path: Absolute path to the repository (must be indexed first).
     """
-    storage = _storage_for(repo_path)
+    repo = _resolve_repo(repo_path)
+    storage = _storage_for(repo)
     if not storage.exists():
-        return _NOT_INDEXED_HINT
+        return _not_indexed(repo)
 
     with _lock:
         packs = _get_packstore(storage).list()
@@ -330,12 +416,13 @@ def index_status(repo_path: str) -> str:
     Args:
         repo_path: Absolute path to the repository.
     """
-    storage = _storage_for(repo_path)
+    repo = _resolve_repo(repo_path)
+    storage = _storage_for(repo)
     if not _is_indexed(storage):
         return (
             f"Not indexed: {repo_path}\n"
             f"Expected index at {storage}\n"
-            f"{_NOT_INDEXED_HINT}"
+            f"{_not_indexed(repo)}"
         )
 
     with _lock:
@@ -368,16 +455,19 @@ def index_repository(repo_path: str, reset: bool = False) -> str:
         repo_path: Absolute path to the repository to index.
         reset: If true, rebuild the index from scratch.
     """
-    root = Path(repo_path).expanduser().resolve()
+    root = _resolve_repo(repo_path)
     if not root.is_dir():
         return f"Not a directory: {repo_path}"
 
-    storage = _storage_for(repo_path)
+    storage = _storage_for(root)
+    hint = legacy_index_hint(root)
 
     from .graph.builder import build_and_save
     from .indexer import index_repo
+    from .paths import ensure_private_dir
 
     with _lock:
+        ensure_private_dir(storage)
         # Release our cached read handle so the indexer can take the write lock.
         _evict_repo(storage)
         result = index_repo(
@@ -398,6 +488,7 @@ def index_repository(repo_path: str, reset: bool = False) -> str:
         f"  graph:       {graph.nodes} nodes, {graph.edges} edges\n"
         f"  storage:     {storage}\n"
         f"Ready — call search_code or find_impact against this repo."
+        + (f"\n{hint}" if hint else "")
     )
 
 
@@ -405,15 +496,16 @@ def index_repository(repo_path: str, reset: bool = False) -> str:
 # Transports
 # --------------------------------------------------------------------------- #
 
-def _build_http_app(token: str | None):
-    """The Streamable-HTTP ASGI app, optionally gated by a bearer token.
+def _build_http_app(token: str):
+    """The Streamable-HTTP ASGI app, gated by a bearer token.
 
     GET /healthz stays open (liveness probes for Fly/Render/etc.); everything
-    else requires `Authorization: Bearer <token>` when a token is configured.
+    else requires `Authorization: Bearer <token>`. There is no unauthenticated
+    variant.
     """
-    app = mcp.streamable_http_app()
     if not token:
-        return app
+        raise ValueError("the HTTP app needs a bearer token (KARST_MCP_TOKEN)")
+    app = mcp.streamable_http_app()
 
     import hmac
 
@@ -443,26 +535,58 @@ def _build_http_app(token: str | None):
     return _BearerAuth(app)
 
 
-def _run_http(host: str, port: int) -> None:
-    import os
-    import sys
+class HttpConfigError(Exception):
+    """HTTP mode is misconfigured; the server must not start."""
 
-    import uvicorn
 
-    token = os.environ.get("KARST_MCP_TOKEN")
+def _http_preflight(env: dict[str, str] | None = None, cwd: str | None = None) -> str:
+    """Check HTTP-mode config before anything starts. Returns the token.
+
+    Requires KARST_MCP_TOKEN (no bypass) and installs the KARST_MCP_ROOTS
+    restriction, defaulting to the working directory.
+    """
+    env = dict(os.environ) if env is None else env
+    token = (env.get("KARST_MCP_TOKEN") or "").strip()
     if not token:
+        raise HttpConfigError(
+            "KARST_MCP_TOKEN is not set. The HTTP server will not start without "
+            "a bearer token. Set it to a long random secret, e.g. "
+            "KARST_MCP_TOKEN=\"$(openssl rand -hex 32)\", and send it as "
+            "`Authorization: Bearer <token>` from the client."
+        )
+    try:
+        roots, defaulted = parse_allowed_roots(env.get("KARST_MCP_ROOTS"), cwd or os.getcwd())
+    except ValueError as exc:
+        raise HttpConfigError(str(exc)) from None
+    set_allowed_roots(roots)
+    for root in roots:
+        if os.path.dirname(root) == root:
+            print(
+                f"[karst-mcp] WARNING: allowed root {root} is a filesystem root, so "
+                "tools can read any directory. Set KARST_MCP_ROOTS to the repos "
+                "you mean to serve.",
+                file=sys.stderr,
+            )
+    if defaulted:
         print(
-            "[karst-mcp] WARNING: KARST_MCP_TOKEN is not set — the HTTP server is "
-            "UNAUTHENTICATED. Anyone who can reach it can query your indexes. Set "
-            "KARST_MCP_TOKEN to require a bearer token before exposing it.",
+            f"[karst-mcp] KARST_MCP_ROOTS is not set; tools may only read repos "
+            f"under the working directory {roots[0]}",
             file=sys.stderr,
         )
+    else:
+        print(f"[karst-mcp] tools may only read repos under: {os.pathsep.join(roots)}", file=sys.stderr)
+    return token
+
+
+def _run_http(host: str, port: int, token: str) -> None:
+    import uvicorn
+
     mcp.settings.host = host
     mcp.settings.port = port
     app = _build_http_app(token)
     print(
         f"[karst-mcp] Streamable HTTP on http://{host}:{port}"
-        f"{mcp.settings.streamable_http_path}  (auth: {'on' if token else 'OFF'})",
+        f"{mcp.settings.streamable_http_path}  (auth: bearer token)",
         file=sys.stderr,
     )
     uvicorn.run(app, host=host, port=port, log_level=str(mcp.settings.log_level).lower())
@@ -482,35 +606,53 @@ def _preload_native_deps() -> None:
     import tree_sitter_language_pack  # noqa: F401
 
 
-def main() -> None:
-    """Console entry point.
-
-    Default: stdio (local hosts — Claude Desktop, Cursor, …).
-    With --http (or KARST_MCP_HTTP=1): Streamable HTTP for remote/hosted hosts.
-    Gate the HTTP server with KARST_MCP_TOKEN when exposing it beyond localhost.
-    """
+def build_arg_parser():
     import argparse
-    import os
 
     parser = argparse.ArgumentParser(prog="karst-mcp", description="karst MCP server.")
     parser.add_argument(
         "--http",
         action="store_true",
-        help="Serve over Streamable HTTP instead of stdio (for remote hosts).",
+        help="Serve over Streamable HTTP instead of stdio (for remote hosts). "
+        "Requires KARST_MCP_TOKEN; tools are limited to KARST_MCP_ROOTS.",
     )
-    parser.add_argument("--host", default=os.environ.get("KARST_MCP_HOST", "0.0.0.0"))
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("KARST_MCP_HOST", DEFAULT_HTTP_HOST),
+        help=f"HTTP bind address (default {DEFAULT_HTTP_HOST}, or KARST_MCP_HOST). "
+        "Use 0.0.0.0 only behind a firewall or proxy you control.",
+    )
     parser.add_argument(
         "--port",
         type=int,
         default=int(os.environ.get("KARST_MCP_PORT", os.environ.get("PORT", "8080"))),
     )
-    args = parser.parse_args()
+    return parser
 
-    _preload_native_deps()
+
+def main(argv: list[str] | None = None) -> None:
+    """Console entry point.
+
+    Default: stdio (local hosts — Claude Desktop, Cursor, …).
+    With --http (or KARST_MCP_HTTP=1): Streamable HTTP for remote/hosted hosts.
+    HTTP mode refuses to start without KARST_MCP_TOKEN, binds 127.0.0.1 by
+    default and limits tools to repos under KARST_MCP_ROOTS.
+    """
+    args = build_arg_parser().parse_args(argv)
+
     http = args.http or os.environ.get("KARST_MCP_HTTP", "").lower() in ("1", "true", "yes")
     if http:
-        _run_http(args.host, args.port)
+        # Validate before the slow native imports, so a misconfigured server
+        # fails fast and never opens a socket.
+        try:
+            token = _http_preflight()
+        except HttpConfigError as exc:
+            print(f"[karst-mcp] error: {exc}", file=sys.stderr)
+            raise SystemExit(2) from None
+        _preload_native_deps()
+        _run_http(args.host, args.port, token)
     else:
+        _preload_native_deps()
         mcp.run()  # stdio
 
 
