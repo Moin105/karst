@@ -43,15 +43,24 @@ karst quickstart
 ```
 
 `quickstart` does three things in order: **indexes** your code, builds a
-**call/import graph**, and suggests **context packs**. The first run downloads a
-small embedding model (~one time, a couple hundred MB) — after that it's local
-and offline.
+**call/import graph**, and suggests **context packs**. The first run downloads the
+tree-sitter parsers for your languages (about 20 MB) and a small embedding model
+(about 65 MB). Both are one-time downloads and send none of your data — after
+that it's local and offline.
 
 When it finishes it prints exactly what to try next, with your storage path
 filled in.
 
 > **Where does it put things?** Everything lands in
-> `~/.karst/indexes/<your-project>/`. Your code never leaves your machine.
+> `~/.karst/indexes/<your-project>-<hash>/` (the hash is 12 hex characters taken
+> from the project's full path, so two projects with the same folder name never
+> share an index; quickstart prints the exact path). On macOS and Linux that
+> folder is private to you (mode 0700). Your code never leaves your machine.
+>
+> Upgrading from karst 0.2.10 or earlier? Indexes used to live at
+> `~/.karst/indexes/<your-project>`, and karst prints a one-line hint when it finds
+> one. Run `karst quickstart` again, then delete the old folder. An old `graph.pkl`
+> is refused (graphs are `graph.json` now); re-run `karst graph-index`.
 
 ## 3. Ask a question — free, no API key
 
@@ -108,14 +117,17 @@ karst ask -i
 ## 5. Before you change something: check the blast radius
 
 This is the part embeddings alone can't do. Ask karst what depends on a symbol.
-`impact` needs the path to the graph that quickstart built — that's
-`<your-index>/graph.pkl`, where `<your-index>` is the storage path quickstart
-printed at the end of step 2 (it's `~/.karst/indexes/<your-folder-name>`). For a
-project folder named `myapp`:
+`impact` reads the graph that quickstart built. Run it from inside your project and
+it finds that graph by itself:
 
 ```bash
-karst impact --target search --graph-path ~/.karst/indexes/myapp/graph.pkl
+karst impact --target search
 ```
+
+(The graph is `graph.json` in your index folder, `<your-index>/graph.json`, where
+`<your-index>` is the storage path quickstart printed at the end of step 2. From
+another folder, pass `--repo-path /path/to/project` or
+`--graph-path <your-index>/graph.json`.)
 
 ```text
 Targets (1):

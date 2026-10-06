@@ -19,10 +19,19 @@ python -m pip download "karst==0.2.7" -d ./karst-wheelhouse
 python -m pip install --no-index --find-links ./karst-wheelhouse karst
 karst index .            # downloads the ~65 MB model into ~/.karst/models
 #    -> copy ~/.karst/models  alongside the wheelhouse for transfer
+
+# c) Pre-seed the tree-sitter parser cache (one-time, needs internet ONCE).
+#    tree-sitter-language-pack ships no grammars in its wheel; it downloads them
+#    from github.com on first use. The six languages karst parses:
+python -c "from tree_sitter_language_pack import get_parser; [get_parser(n) for n in ('python','javascript','typescript','go','rust','java')]"
+python -c "import tree_sitter_language_pack as t; print(t.cache_dir())"
+#    -> copy the folder it prints (the 'libs' directory) for transfer
 ```
 
-Transfer `karst-wheelhouse/` **and** the `~/.karst/models` folder to the air-gapped
-host (USB / one-way diode / approved transfer).
+Transfer `karst-wheelhouse/`, the `~/.karst/models` folder **and** the parser `libs`
+folder to the air-gapped host (USB / one-way diode / approved transfer). The parser
+libraries are native code, so the build host and the air-gapped host must share OS
+and CPU architecture. The parser cache is not covered by `KARST_OFFLINE=1`.
 
 ## 2. Install on the air-gapped host (no internet)
 
@@ -33,9 +42,19 @@ mkdir -p ~/.karst && cp -r ./models ~/.karst/models
 # Install entirely from the local wheelhouse — no PyPI, no network
 python -m pip install --no-index --find-links ./karst-wheelhouse karst
 
-# Force fully-offline mode (blocks any model/grammar fetch)
+# Restore the parser cache to the same path the build host printed in step 1c
+# (Linux default: ~/.cache/tree-sitter-language-pack/v1.9.1/libs)
+mkdir -p ~/.cache/tree-sitter-language-pack/v1.9.1 && cp -r ./libs ~/.cache/tree-sitter-language-pack/v1.9.1/libs
+
+# Force offline mode for the embedding model (HF_HUB_OFFLINE). This does NOT stop
+# the parser download; with the parser cache restored above none is attempted.
 export KARST_OFFLINE=1
 ```
+
+If the host must fetch parsers from an internal mirror instead of copying the
+cache, set `TREE_SITTER_LANGUAGE_PACK_MANIFEST_URL` to your mirror's `parsers.json`
+(an `https://` or `file://` URL; the manifest's archive URLs and SHA-256 values
+must match your mirrored files).
 
 ## 3. Run it — fully offline
 
@@ -43,7 +62,7 @@ export KARST_OFFLINE=1
 cd /path/to/your/repo
 karst index .                         # parse + embed + graph, all local
 karst ask "how does auth work?" --no-llm     # cited chunks, no LLM, no network
-karst impact UserModel                # blast-radius, pure local graph walk
+karst impact --target UserModel       # blast-radius, pure local graph walk
 ```
 
 `--no-llm` returns cited code with zero LLM. To add **on-prem** AI answers, point
@@ -65,9 +84,11 @@ pre-installed and never run `pip install` themselves**:
 - **Golden image / dev container:** add the offline install + `~/.karst/models` +
   `KARST_OFFLINE=1` to your base image (Dockerfile / Nix / Packer).
 - **Managed workspaces:** bake it into your Coder / Gitpod / VDI template.
-- **Central MCP gateway:** run one self-hosted karst MCP endpoint (`karst-mcp --http`,
-  behind `KARST_MCP_TOKEN`) that every developer's agent points at — one approved
-  deployment for the whole org. (Team identity/audit features: see SECURITY.md §5.)
+- **Central MCP gateway:** run one self-hosted karst MCP endpoint (`karst-mcp --http`
+  with `KARST_MCP_TOKEN` set, `KARST_MCP_HOST` set to the interface you serve on and
+  `KARST_MCP_ROOTS` limited to the repo folders; see docs/MCP.md for the Host-header
+  caveat) that every developer's agent points at — one approved deployment for the
+  whole org. (Team identity/audit features: see SECURITY.md §5.)
 
 ## 5. Generate an SBOM (CycloneDX)
 
@@ -87,13 +108,13 @@ permissively licensed (see SECURITY.md §6).
 Don't trust the attestation — verify it:
 
 ```bash
-# 1. Install from the wheelhouse, pre-seed the model (steps 1–2 above).
+# 1. Install from the wheelhouse, pre-seed the model and parser caches (steps 1–2 above).
 # 2. Physically disconnect the network (or block egress for the user/process).
 # 3. Run the core workflow under your egress monitor (netstat / Little Snitch / eBPF):
 export KARST_OFFLINE=1
 karst index .
 karst ask "where is rate limiting enforced?" --no-llm
-karst impact <some-symbol>
+karst impact --target <some-symbol>
 # 4. Confirm: the commands succeed AND your monitor shows ZERO outbound connections.
 ```
 

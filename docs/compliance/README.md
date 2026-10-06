@@ -7,13 +7,16 @@
 ## The one-paragraph version
 
 **You are not procuring a SaaS vendor. You are installing an open-source library
-you can read and run entirely inside your own perimeter.** karst's own code makes
-**zero outbound network calls** — no telemetry, no phone-home, no license server,
-no sub-processors. It indexes your code, builds a dependency graph, and answers
-questions *on the machine it runs on*. In a fully air-gapped configuration,
+you can read and run entirely inside your own perimeter.** karst's own code
+contains **no network client** — no telemetry, no phone-home, no license server,
+no sub-processors; the CLI sends nothing anywhere by itself. It indexes your code,
+builds a dependency graph, and answers questions *on the machine it runs on*. In a
+fully air-gapped configuration (parser and model caches pre-seeded, no cloud LLM),
 **nothing — including your source code — ever leaves your boundary.** Because it's
 Apache-2.0 and source-available, your security team can verify every claim below
-by reading the code instead of trusting us.
+by reading the code instead of trusting us. The full list of what can reach the
+network is the table in
+[What leaves your machine](../../README.md#what-leaves-your-machine).
 
 ## What's in this pack
 
@@ -40,18 +43,30 @@ offline").
 
 ## Scope & honesty note
 
-karst has exactly **two optional, operator-chosen integrations** that *can* reach
-the network, both off by default in an air-gapped deployment and both documented
-in [SECURITY.md](SECURITY.md):
+karst has two **one-time downloads** and two **optional, operator-chosen
+integrations** that *can* reach the network, all documented in
+[SECURITY.md](SECURITY.md):
 
-1. **A cloud LLM** for written answers — only if *you* configure an Anthropic/OpenAI
-   key. Use a local model (`--llm local`, e.g. Ollama) or retrieval-only (`--no-llm`)
-   and no prompt ever leaves the box.
-2. **GitHub PR review** (`karst review --pr`) — shells out to *your* `gh` CLI. Don't
+1. **Tree-sitter parsers** — downloaded once from GitHub releases by the
+   `tree-sitter-language-pack` dependency, SHA-256 checked, then cached. Pre-seed
+   the cache for an air-gapped host. No code is sent.
+2. **The embedding model** — downloaded once from huggingface.co, then cached.
+   `KARST_OFFLINE=1` blocks it. No code is sent.
+3. **A cloud LLM** for written answers (`ask`) and reviews (`review`) — only if *you*
+   configure an Anthropic/OpenAI key. Use a local model (`--llm local`, e.g. Ollama)
+   or, for `ask`, retrieval-only (`--no-llm`) and no prompt ever leaves the box.
+4. **GitHub PR review** (`karst review --pr`) — shells out to *your* `gh` CLI. Don't
    use that one command and there is no GitHub traffic.
 
-The core — `index`, `ask`, `impact`, `search` — never touches the network once the
-embedding model is cached locally.
+The core — `index`, `ask --no-llm`, `impact`, `search` — never touches the network
+once the parser and embedding-model caches exist locally. One more path sits
+outside karst: the MCP server hands retrieved code to whichever MCP client you
+connect, and that client may forward it to its own model provider.
+
+One known limitation, stated plainly: the local vector store (`qdrant-client`) loads
+pickled data when it opens an index, so write access to the index directory is code
+execution as the karst user. karst keeps the directories private and refuses stores
+owned by another user; see [SECURITY.md](SECURITY.md) §2.
 
 ---
 

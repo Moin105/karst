@@ -13,7 +13,7 @@ software is self-hosted), that's stated plainly.
 
 | Question | Answer |
 |---|---|
-| Does the product transmit customer data (source code) to the vendor or any third party? | **No.** In an air-gapped configuration nothing leaves the host. The only paths that can transmit code are operator-enabled (a cloud LLM you configure, or `gh`-based PR review) — both avoidable. See SECURITY.md §3. |
+| Does the product transmit customer data (source code) to the vendor or any third party? | **No.** In an air-gapped configuration nothing leaves the host. The only paths that can transmit code are operator-enabled: a cloud LLM you configure, `gh`-based PR review, or the model behind the MCP client you connect (outside karst). All are avoidable. See SECURITY.md §3. |
 | Where is customer data stored? | On the customer host only (`~/.karst/`). No vendor-side storage. |
 | Is customer data used to train models? | **No.** The local embedding model is pre-trained and read-only; karst performs no training. |
 | Data classification supported | Suitable for confidential / regulated / CUI source when run air-gapped (operator-configured). |
@@ -24,9 +24,9 @@ software is self-hosted), that's stated plainly.
 
 | Question | Answer |
 |---|---|
-| Does the software "phone home" / send telemetry? | **No.** No telemetry, analytics, or update pings. (Verifiable in source.) |
-| Required outbound connections for normal operation | **None**, after a one-time local embedding-model cache. With `KARST_OFFLINE=1` and a pre-seeded cache, zero outbound. |
-| Inbound listeners | Default stdio (no socket). Optional Streamable-HTTP MCP server binds a host/port you choose; protect with `KARST_MCP_TOKEN` and your network controls. |
+| Does the software "phone home" / send telemetry? | **No.** The CLI sends nothing anywhere by itself: no telemetry, analytics, or update pings. (Verifiable in source.) |
+| Required outbound connections for normal operation | **None**, after two one-time downloads are cached: the tree-sitter parsers (github.com, SHA-256 checked) and the embedding model (huggingface.co). With both caches pre-seeded and `KARST_OFFLINE=1`, zero outbound. `KARST_OFFLINE=1` covers the model only; the parser cache must be pre-seeded. |
+| Inbound listeners | Default stdio (no socket). The optional Streamable-HTTP MCP server (`--http`) binds `127.0.0.1` by default, refuses to start without `KARST_MCP_TOKEN`, and limits tools to `KARST_MCP_ROOTS`; exposing it beyond localhost is your network controls' job. |
 | License-server / activation callback | **None.** No activation, no license check. |
 
 ## C. Identity & access management
@@ -48,6 +48,7 @@ software is self-hosted), that's stated plainly.
 | Build/release integrity | Published to PyPI via GitHub Actions Trusted Publishing (OIDC; no stored tokens). Pin version + hashes and mirror internally. |
 | Can we install from our internal mirror? | Yes — it's a standard Python package; vendor a wheelhouse into Artifactory/Nexus. |
 | Source code review possible? | Yes — fully source-available under Apache-2.0. |
+| Known security limitations | `qdrant-client`'s local mode unpickles stored points from `<index>/collection/*/storage.sqlite` when it opens a store, so write access to the index directory is code execution as the karst user. karst keeps `~/.karst` and index directories private (0700 on POSIX) and refuses to open a store owned by another user or world-writable; a data-only vector backend is a planned follow-up. The call graph is data-only JSON, never pickle. See SECURITY.md §2. |
 
 ## E. Operational & compliance
 
@@ -65,7 +66,7 @@ software is self-hosted), that's stated plainly.
 
 | Question | Answer |
 |---|---|
-| Does an LLM see our code? | Only if you enable a cloud LLM. Use `--llm local` (on-prem model) or `--no-llm` (retrieval only) and no LLM sees code outside your boundary. |
+| Does an LLM see our code? | Only if you enable a cloud LLM, or your MCP client uses one. Use a local model (`KARST_LLM_PROVIDER=local`, or `ask --llm local`) or `ask --no-llm` (retrieval only) and karst gives no LLM code outside your boundary. The model behind your MCP client is outside karst. |
 | Are outputs deterministic / auditable? | The retrieval, graph, and **impact/blast-radius analysis are deterministic and computed** (not model-sampled), so results are reproducible and explainable. LLM-written prose (optional) is the only probabilistic part. |
 | Model provenance | Default embedding model: BAAI/bge-small-en-v1.5 (open weights, ONNX). Swappable. |
 

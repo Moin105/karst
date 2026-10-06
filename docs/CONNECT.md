@@ -225,16 +225,28 @@ for karst's simple `Authorization: Bearer` token. So today the clean path is the
 ### Run karst as a remote server
 
 ```bash
-export KARST_MCP_TOKEN="$(openssl rand -hex 32)"   # a long random secret
-karst-mcp --http                                   # serves on 0.0.0.0:8080
+export KARST_MCP_TOKEN="$(openssl rand -hex 32)"   # a long random secret (required)
+export KARST_MCP_ROOTS=/srv/repos                  # repos the tools may read
+karst-mcp --http                                   # serves on 127.0.0.1:8080
 ```
 
-- Endpoint: `http://<host>:8080/mcp` · open health check: `http://<host>:8080/healthz`
-- Override with `--host` / `--port` (or env `KARST_MCP_HOST` / `KARST_MCP_PORT`).
-- **Without `KARST_MCP_TOKEN` the server is unauthenticated** — it warns you.
-  Always set it (or otherwise lock the endpoint down) before exposing it.
+- Endpoint: `http://127.0.0.1:8080/mcp` · open health check: `http://127.0.0.1:8080/healthz`
+- **It binds `127.0.0.1` by default.** To reach it from another machine set
+  `KARST_MCP_HOST=0.0.0.0` (or `--host`), and only behind a firewall or proxy you
+  control. The port is `--port` / `KARST_MCP_PORT` (or `PORT`).
+- **`KARST_MCP_TOKEN` is required.** The server refuses to start without it (exit
+  code 2); there is no unauthenticated mode. Clients send
+  `Authorization: Bearer <token>`.
+- **Tools only read repos under `KARST_MCP_ROOTS`** (a list separated by `:` on
+  macOS/Linux and `;` on Windows; default: the server's working directory). A
+  `repo_path` outside it, or one that reaches outside through `..` or a symlink, is
+  rejected.
 - For the browser to reach it, terminate TLS in front (a reverse proxy or a
   tunnel like Cloudflare Tunnel / ngrok) so the public URL is `https://`.
+- **Known limitation:** the MCP SDK's Host-header check answers `421 Invalid Host
+  header` to any request whose `Host` is not localhost, so a proxy that forwards your
+  public hostname is rejected. A proxy or tunnel that sends `Host: 127.0.0.1:<port>`
+  to karst works. A proper host allow-list is a follow-up.
 
 See [MCP.md](MCP.md) for hosting specifics; [the launch discussion in the
 README](../README.md) explains why a hosted endpoint serves *one* index, not a
@@ -248,9 +260,10 @@ Available on Free (1 connector) / Pro / Max / Team / Enterprise; in beta.
 2. **Settings → Customize → Connectors → + → Add custom connector.**
 3. Paste `https://<your-host>/mcp`.
 4. **Auth caveat:** the form offers only OAuth (Client ID/Secret) or none —
-   **no bearer-token field**. So either run karst **authless** behind other
-   controls (IP allowlist / mTLS at the proxy), or front it with an **OAuth
-   proxy**. A static `KARST_MCP_TOKEN` can't be entered here directly.
+   **no bearer-token field**, and karst no longer has an unauthenticated mode. So
+   front it with a proxy that adds the `Authorization: Bearer …` header itself (and
+   does the OAuth, IP allowlist or mTLS toward the browser). A static
+   `KARST_MCP_TOKEN` can't be entered here directly.
 
 ### ChatGPT (web)
 

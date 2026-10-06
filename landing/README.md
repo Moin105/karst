@@ -18,7 +18,8 @@ A single-page dark-theme site (`index.html`) that:
 - Explains karst in one screen: tagline, the three headline numbers (343s -> 2.3s incremental
   reindex, $0.019 average cost per Sonnet 4.6 query, 60% fewer tokens), the three-step Index /
   Pack / Serve flow, and a copy-pasteable install snippet.
-- Collects waitlist signups via a single `fetch` POST to the admin dashboard.
+- Collects waitlist signups, feedback and quote requests with `fetch` POSTs to a separately hosted
+  backend. That backend is not part of this repository, and the karst CLI never calls it.
 - Has no framework, no build, no `node_modules`. Tailwind is loaded from the CDN, fonts from
   Google Fonts.
 
@@ -72,24 +73,26 @@ At your DNS registrar, point:
 case.) DNS propagation usually finishes within a few minutes; certificates are issued
 automatically.
 
-## Pointing the waitlist form at your admin dashboard
+## Pointing the website forms at a backend
 
-The form in `index.html` POSTs `{ email, source: "landing" }` to a single endpoint, resolved in
-this order:
+The waitlist form in `index.html` POSTs `{ email, source: "landing" }`, and the feedback and quote
+forms POST what the visitor typed. This is the only place the website sends anything, and it is
+only what a visitor submits. The karst CLI and MCP server never use these endpoints.
 
-1. `process.env.NEXT_PUBLIC_API_URL` (in case this is ever embedded in a Next.js build).
-2. `window.KARST_API_URL` set by an inline `<script>`.
-3. The default: `https://admin.karst.dev/api/waitlist`.
-
-To override without editing `index.html`, add a script tag in `<head>` *before* the main inline
-script:
+The waitlist endpoint is `window.KARST_API_URL` if set, otherwise the default constant in the
+inline script at the bottom of `index.html`. The feedback and quote forms use
+`window.KARST_FEEDBACK_URL` the same way. To override without editing `index.html`, add a script
+tag in `<head>` *before* the main inline script:
 
 ```html
-<script>window.KARST_API_URL = "https://your-admin.example.com/api/waitlist";</script>
+<script>
+  window.KARST_API_URL = "https://your-backend.example.com/api/waitlist";
+  window.KARST_FEEDBACK_URL = "https://your-backend.example.com/api/feedback";
+</script>
 ```
 
-Or just edit the `API_URL` constant at the bottom of `index.html` and commit. The endpoint must
-accept JSON POSTs and respond with any 2xx status on success.
+Or edit the constants at the bottom of `index.html` and commit. The endpoints must accept JSON
+POSTs and respond with any 2xx status on success. The backend itself is not in this repository.
 
 ## How this folder was split out of the main private repo
 

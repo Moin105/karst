@@ -42,14 +42,17 @@ The MCP tools read a prebuilt index. Build it once per repo:
 karst index /path/to/your-repo
 # optional but recommended — enables find_impact and pack scoping:
 karst graph-index /path/to/your-repo
-karst packs --storage ~/.karst/indexes/your-repo \
+karst packs --storage ~/.karst/indexes/<your-repo>-<hash> \
   suggest /path/to/your-repo --apply --retag
 ```
 
-> The `--storage` folder is the **basename of the repo path**: indexing
-> `/path/to/myapp` stores it at `~/.karst/indexes/myapp` (the two must match).
-> Simpler: run `karst quickstart /path/to/your-repo`, which does all three steps
-> and prints the exact storage path.
+> The `--storage` folder is `~/.karst/indexes/<folder>-<hash>`: the repo's folder
+> name plus the first 12 hex characters of a SHA-256 of its real path, so two repos
+> with the same folder name never share an index. Indexing `/path/to/myapp` stores
+> it at something like `~/.karst/indexes/myapp-1a2b3c4d5e6f` (the `--storage` you
+> pass later must match). Simpler: run `karst quickstart /path/to/your-repo`, which
+> does all three steps and prints the exact storage path. The MCP tools work the
+> folder out themselves from the repo path you give them.
 
 (You can also do this from inside the host by calling the `index_repository`
 tool — handy for small repos. For large repos prefer the CLI so you don't block
@@ -118,7 +121,7 @@ when useful. Examples that trigger them:
 - *"What context packs exist for this repo?"* → `list_packs`.
 
 You can always pass the repo's absolute path; the tools resolve the index from
-`~/.karst/indexes/<repo-name>`.
+`~/.karst/indexes/<repo-folder>-<hash>`.
 
 ---
 
@@ -154,19 +157,32 @@ one server with a team, run it over **Streamable HTTP** instead:
 
 ```bash
 # on a machine that has the repos indexed (it reads ~/.karst/indexes locally)
-export KARST_MCP_TOKEN="a-long-random-secret"
-karst-mcp --http                  # host 0.0.0.0, port $PORT or 8080
+export KARST_MCP_TOKEN="a-long-random-secret"   # required
+export KARST_MCP_ROOTS=/srv/repos               # repos the tools may read
+karst-mcp --http                  # binds 127.0.0.1, port $PORT or 8080
 ```
 
 - Endpoint: `https://your-host/mcp`  ·  health check: `GET /healthz` (open).
-- **Auth:** every request needs `Authorization: Bearer $KARST_MCP_TOKEN`. If you
-  don't set the token it runs unauthenticated and warns loudly — don't do that
-  off localhost.
-- **Put it behind HTTPS** (your platform's TLS, or a reverse proxy). `$PORT` is
-  honored, so it deploys as-is to Fly / Render / Railway.
+- **Auth (required):** the server refuses to start without `KARST_MCP_TOKEN` (exit
+  code 2; there is no bypass), and every request needs
+  `Authorization: Bearer $KARST_MCP_TOKEN`.
+- **Binds `127.0.0.1` by default** (`--host` or `KARST_MCP_HOST` overrides). Set
+  `KARST_MCP_HOST=0.0.0.0` only behind a firewall or reverse proxy you control.
+- **Tools are limited to `KARST_MCP_ROOTS`.** Every tool's `repo_path` must resolve
+  to a directory under one of those roots (a list separated by `:` on macOS/Linux,
+  `;` on Windows; default: the server's working directory). `..` and symlink
+  escapes are rejected. stdio mode is unchanged and accepts any path.
+- **Put it behind HTTPS** (your platform's TLS, or a reverse proxy). The port comes
+  from `--port`, `KARST_MCP_PORT` or `$PORT`.
+- **Hosted platforms (Fly / Render / Railway) don't work as-is yet.** They need
+  `KARST_MCP_HOST=0.0.0.0` and `KARST_MCP_ROOTS` set, and there is a known
+  limitation: the MCP SDK's Host-header check answers `421 Invalid Host header` to
+  any request whose `Host` is not localhost, which is what a hostname-routed
+  platform sends. A proxy or tunnel you control that sends `Host: 127.0.0.1:<port>`
+  to karst works; a host allow-list in karst is a follow-up.
 
 **Important:** the server reads indexes from its **own disk**
-(`~/.karst/indexes/<repo>`). A hosted server can't see your laptop's files — so
+(`~/.karst/indexes/<repo>-<hash>`). A hosted server can't see your laptop's files — so
 index the repos **on the server** (run `karst index` / `karst quickstart` there,
 or mount a volume that has them).
 
@@ -183,6 +199,13 @@ or mount a volume that has them).
 
 - **"This repo isn't indexed yet."** Run `karst index <path>` (and
   `graph-index` for impact), or call the `index_repository` tool.
+- **`--http` exits with "KARST_MCP_TOKEN is not set".** HTTP mode requires a token;
+  set `KARST_MCP_TOKEN` to a long random secret.
+- **A tool says the repo path is outside `KARST_MCP_ROOTS`.** In HTTP mode, tools
+  only read repos under those roots (default: the working directory the server was
+  started in). Add the repo's parent folder to `KARST_MCP_ROOTS`.
+- **HTTP `421 Invalid Host header`.** A request reached karst with a non-localhost
+  `Host`. See the hosted-mode note above.
 - **`karst-mcp` not found.** Use `python -m karst.mcp_server` in the
   config, or add the pip Scripts dir to PATH.
 - **Host shows no tools.** Fully quit and reopen the host after editing its

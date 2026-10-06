@@ -28,6 +28,30 @@ threshold is configurable). It fails closed: if karst is missing, slow or
 erroring, the repo has no graph, or the symbol is not in the graph, it asks
 instead of allowing. Stdlib-only Python, not part of the installed package.
 
+**Security hardening** (from a review by Emanuel Rechsteiner):
+
+- **The graph is data-only JSON.** `graph.json` (format version 2) replaces
+  `graph.pkl`. It is written atomically and validated on load. karst never
+  unpickles a graph: an old `graph.pkl` is refused with "graph format changed
+  for safety; re-run `karst graph-index <repo>`".
+- **One index per repo, private.** Indexes live at
+  `~/.karst/indexes/<folder>-<sha256(realpath)[:12]>/`, so same-named repos no
+  longer share one. On POSIX, `~/.karst` and index directories are 0700, and
+  karst refuses to open a vector store another user could have written.
+  Re-index once; a one-line hint points at the old folder. `karst impact` now
+  finds the graph by itself when run inside the repo.
+- **`karst-mcp --http` is locked down.** It binds 127.0.0.1 by default, refuses
+  to start without `KARST_MCP_TOKEN`, and only serves repos under
+  `KARST_MCP_ROOTS` (default: the working directory; `..` and symlink escapes
+  are rejected). Set `KARST_MCP_HOST=0.0.0.0` explicitly for remote use.
+- **Docs match the code.** Removed stale passages that described a phone-home
+  to an admin dashboard: the CLI has no telemetry and sends nothing by itself.
+  New README section "What leaves your machine", plus the first-run parser
+  download (host, SHA-256 check, cache, pre-download command).
+- **Pinned supply chain.** `tree-sitter-language-pack` is pinned to
+  `>=1.9.1,<1.10`, and every GitHub Action, including
+  `pypa/gh-action-pypi-publish`, is pinned to a commit SHA.
+
 ## 0.2.10
 
 **Fresh installs work again.** A clean `pip install karst` had started pulling

@@ -9,16 +9,18 @@ helps* so you know what you're buying.
 storage path. Without it, `ask`/`impact` exit with "no index found".
 
 Throughout, **`S` = your index path** — the one quickstart printed, which is
-`~/.karst/indexes/<your-folder-name>`. The snippets below use `S` as a shell
-variable, so set it once and they run as written:
+`~/.karst/indexes/<your-folder-name>-<hash>` (the hash is 12 hex characters taken
+from the project's full path, so same-named projects never share an index). The
+snippets below use `S` as a shell variable, so set it once and they run as written:
 
 ```bash
-export S=~/.karst/indexes/myapp        # replace myapp with your folder name
+export S=~/.karst/indexes/myapp-1a2b3c4d5e6f   # paste the path quickstart printed
 ```
 
 > Shortcut: if you `cd` into the project folder, you can **omit `--storage`
-> entirely** — `ask`/`index` default to that folder's index. (`impact` still
-> needs `--graph-path "$S/graph.pkl"`.)
+> entirely** — `ask`/`index` default to that folder's index, and `impact` finds
+> that folder's `graph.json` by itself. (From another folder, pass
+> `--graph-path "$S/graph.json"` or `--repo-path /path/to/project`.)
 
 ---
 
@@ -46,7 +48,7 @@ actually matter, each clickable. No full-text grep archaeology.
 The check you usually do in your head — made explicit, before you touch code.
 
 ```bash
-karst impact --target search --graph-path "$S/graph.pkl"
+karst impact --target search            # run inside the project
 ```
 
 ```text
@@ -64,8 +66,8 @@ Affected: 27  Risk: HIGH
 You can also target a diff instead of a name:
 
 ```bash
-karst impact --staged --graph-path "$S/graph.pkl"       # what your staged changes touch
-karst impact --base origin/main --graph-path "$S/graph.pkl"
+karst impact --staged                  # what your staged changes touch
+karst impact --base origin/main
 ```
 
 **Why it helps:** it's a real call/import graph, so it catches dependents that
@@ -167,7 +169,7 @@ can stay in chat and never run a command. See
 | Explore, no API key | `karst ask "…" --no-llm` |
 | Interactive Q&A | `karst ask -i` |
 | Written answer | `karst ask "…"` (set `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`) |
-| Blast radius | `karst impact --target NAME --graph-path "$S/graph.pkl"` |
+| Blast radius | `karst impact --target NAME` (inside the project) |
 | Scope a search | `karst packs --storage "$S" attach <pack-id>` |
 | Review a diff | `karst review --staged --storage "$S"` |
 | Refresh the index | `karst index . --storage "$S"` |
