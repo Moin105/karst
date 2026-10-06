@@ -19,7 +19,7 @@ The gate never returns `deny` and never exits 2. It asks. There is no switch tha
 
 ## Install
 
-1. Install a karst build that has the decorated-method chunker fix. It is on `main` and not on PyPI yet: `pip install git+https://github.com/Moin105/karst`. karst 0.2.10 and earlier drop methods such as httpx's `Client.request` from the graph, so the gate would report a coverage gap for them.
+1. Install karst 0.2.11 or later: `pip install "karst==0.2.11"`. karst 0.2.10 and earlier drop methods such as httpx's `Client.request` from the graph (the gate would report coverage gaps for them) and still store the graph as a pickle.
 2. Build the graph for your repo, once, and again when the code has moved on:
 
    ```
