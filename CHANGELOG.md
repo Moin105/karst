@@ -21,6 +21,13 @@ matched unrelated nodes at random:
 Existing indexes keep the bad chunks for unchanged files: re-run
 `karst index <repo> --full` and `karst graph-index <repo>`.
 
+**New: blast-radius gate for Claude Code** (`contrib/claude-code/`). A
+PreToolUse hook that runs `karst impact` on the symbol an Edit/Write/MultiEdit
+touches and asks for a human yes/no when the blast radius is CRITICAL (the
+threshold is configurable). It fails closed: if karst is missing, slow or
+erroring, the repo has no graph, or the symbol is not in the graph, it asks
+instead of allowing. Stdlib-only Python, not part of the installed package.
+
 ## 0.2.10
 
 **Fresh installs work again.** A clean `pip install karst` had started pulling
